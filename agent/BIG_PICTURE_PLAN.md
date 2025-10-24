@@ -5,6 +5,14 @@
 Building a lightweight process supervisor in Rust that manages child processes
 with restart capabilities via signals and hotkeys.
 
+## AI Agent Instructions
+
+Let's implement the app! Let's do it step by step so that i can review it.
+Answer concise, sacrifice grammar for brevity. I'll ask if i need more
+explanation. Use @PROGRESS.md to figure out how much is done already and what to
+do next. Use @actions/log_progress.md to log progress. Write integration tests
+after each phase as defined in @actions/writing_integration_tests.md.
+
 ## Architecture Components
 
 ### 1. CLI Argument Parsing
