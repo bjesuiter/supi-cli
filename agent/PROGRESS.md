@@ -52,3 +52,71 @@ Update `src/supervisor.rs` to use tokio::select! for event loop.
 - All dependencies added to Cargo.toml
 - Compiles successfully
 - All functions stubbed with `anyhow::bail!("not implemented yet")`
+
+---
+
+## Test Commands Per Phase
+
+### Phase 1 (CLI & Skeleton)
+
+```bash
+# Test help output
+bx run -- --help
+
+# Test version
+bx run -- --version
+
+# Test basic argument parsing (will show stub error)
+bx run echo hello
+```
+
+### Phase 2 (Basic Process Spawning)
+
+```bash
+# Simple output test
+bx run echo "Hello World"
+
+# Multi-line time-delayed output
+bx run bash -- -c 'for i in {1..5}; do echo "tick $i"; sleep 0.5; done'
+
+# Test stdout and stderr forwarding
+bx run bash -- -c 'echo "stdout message" && echo "stderr message" >&2'
+
+# Test --stop-on-child-exit flag
+bx run --stop-on-child-exit echo "Testing stop flag"
+
+# Use bonnie shortcut
+bx dev
+```
+
+### Phase 3 (Signal Handling) - TODO
+
+```bash
+# Test graceful shutdown with Ctrl+C
+bx run bash -- -c 'while true; do echo tick; sleep 1; done'
+# Then press Ctrl+C
+
+# Test restart signal (in another terminal)
+kill -SIGUSR1 $(pgrep -f "supi-cli")
+
+# Use bonnie shortcut for long-running process
+bx dev-sleep
+```
+
+### Phase 4 (Interactive Hotkey) - TODO
+
+```bash
+# Test restart with 'r' key
+bx run bash -- -c 'while true; do echo tick; sleep 1; done'
+# Then press 'r' to restart
+
+# Test custom hotkey
+bx run --restart-hotkey R bash -- -c 'while true; do echo tick; sleep 1; done'
+```
+
+### Phase 5 (Advanced Features) - TODO
+
+```bash
+# Test all features together
+bx run --restart-signal SIGUSR2 --restart-hotkey R bash -- -c 'echo "Running PID: $$"; sleep 10'
+```

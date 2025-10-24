@@ -42,6 +42,33 @@ Specific next steps:
 - Only status, what changed, what's next
 - 30-50 lines max per session
 
+## Test Commands Section
+
+Maintain a "Test Commands Per Phase" section at the end of PROGRESS.md. For each
+completed phase, add specific test commands using `bx run`:
+
+**Include:**
+
+- Simple test (basic functionality)
+- Edge case test (stderr, flags, etc.)
+- Complex test (multi-line output, long-running)
+- Relevant bx shortcuts (bx dev, bx dev-sleep)
+
+**Mark future phases with:** `- TODO`
+
+**Example test commands:**
+
+```bash
+# Simple
+bx run echo "test"
+
+# Complex
+bx run bash -- -c 'for i in {1..5}; do echo $i; sleep 1; done'
+
+# With flags
+bx run --stop-on-child-exit echo "test"
+```
+
 ## Example Entry
 
 ```markdown
