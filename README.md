@@ -19,6 +19,17 @@ services.
 - **Interactive Restart**: Press a key to instantly restart your process
 - **Flexible Configuration**: Customize restart signals and hotkeys
 
+## Why?
+
+I made myself a [zellij](https://zellij.dev/) (a rust terminal multiplexer, like
+tmux) layout with various panels but most importantly with a panel on the left
+for a `npm run build:app && npm run dev` command. This command builds the app
+and then starts the development server. I wanted to be able to restart the
+development server with a hotkey or signal. Since the app is really big with a
+lot of components, I don't want to rebuild the app everytime I make a change. If
+you look for this behavior, you might enjoy
+[watchexec-cli](https://crates.io/crates/watchexec-cli).
+
 ## Core Behavior
 
 ### Output Forwarding
