@@ -1,6 +1,7 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
 
+// Manual test: cargo run -- --help
 #[test]
 fn test_help_flag() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
@@ -13,6 +14,7 @@ fn test_help_flag() {
         .stdout(predicate::str::contains("Usage:"));
 }
 
+// Manual test: cargo run -- --version
 #[test]
 fn test_version_flag() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
@@ -22,6 +24,7 @@ fn test_version_flag() {
         .stdout(predicate::str::contains("0.1.0"));
 }
 
+// Manual test: cargo run -- -V
 #[test]
 fn test_version_flag_short() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
@@ -31,6 +34,7 @@ fn test_version_flag_short() {
         .stdout(predicate::str::contains("0.1.0"));
 }
 
+// Manual test: cargo run --
 #[test]
 fn test_missing_command_fails() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
@@ -39,6 +43,7 @@ fn test_missing_command_fails() {
         .stderr(predicate::str::contains("required"));
 }
 
+// Manual test: cargo run -- echo "hello world"
 #[test]
 fn test_simple_echo() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
@@ -49,6 +54,7 @@ fn test_simple_echo() {
         .stdout(predicate::str::contains("hello world"));
 }
 
+// Manual test: cargo run -- --stop-on-child-exit echo "test message"
 #[test]
 fn test_stop_on_child_exit_flag() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
@@ -61,6 +67,7 @@ fn test_stop_on_child_exit_flag() {
         .stdout(predicate::str::contains("Exiting"));
 }
 
+// Manual test: cargo run -- this_command_does_not_exist_xyz123
 #[test]
 fn test_nonexistent_command() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
@@ -71,6 +78,7 @@ fn test_nonexistent_command() {
         .stderr(predicate::str::contains("Failed to spawn"));
 }
 
+// Manual test: cargo run -- bash -- -c "echo line1 && echo line2 && echo line3"
 #[test]
 fn test_stdout_forwarding() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
@@ -85,6 +93,7 @@ fn test_stdout_forwarding() {
         .stdout(predicate::str::contains("line3"));
 }
 
+// Manual test: cargo run -- bash -- -c "echo 'error message' >&2"
 #[test]
 fn test_stderr_forwarding() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
