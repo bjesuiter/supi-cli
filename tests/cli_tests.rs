@@ -51,7 +51,10 @@ fn test_simple_echo() {
         .arg("hello world")
         .assert()
         .success()
-        .stdout(predicate::str::contains("hello world"));
+        .stdout(predicate::str::contains("hello world"))
+        .stdout(predicate::str::contains(
+            "Process exited, but supervisor continues running",
+        ));
 }
 
 // Manual test: cargo run -- --stop-on-child-exit echo "test message"
@@ -64,7 +67,9 @@ fn test_stop_on_child_exit_flag() {
         .assert()
         .success()
         .stdout(predicate::str::contains("test message"))
-        .stdout(predicate::str::contains("Exiting"));
+        .stdout(predicate::str::contains(
+            "Exiting (--stop-on-child-exit is set)",
+        ));
 }
 
 // Manual test: cargo run -- this_command_does_not_exist_xyz123
