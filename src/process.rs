@@ -1,24 +1,96 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::process::{Child, Command};
 
 pub struct ProcessManager {
     command: String,
     args: Vec<String>,
+    child: Option<Child>,
 }
 
 impl ProcessManager {
     pub fn new(command: String, args: Vec<String>) -> Self {
-        Self { command, args }
+        Self {
+            command,
+            args,
+            child: None,
+        }
     }
 
     pub async fn spawn(&mut self) -> Result<()> {
-        anyhow::bail!("ProcessManager::spawn not implemented yet")
+        if self.child.is_some() {
+            anyhow::bail!("Process already running");
+        }
+
+        println!("[supi] Starting process: {} {:?}", self.command, self.args);
+
+        let mut child = Command::new(&self.command)
+            .args(&self.args)
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .kill_on_drop(true)
+            .spawn()
+            .context("Failed to spawn child process")?;
+
+        // Get stdout/stderr handles
+        let stdout = child
+            .stdout
+            .take()
+            .context("Failed to capture child stdout")?;
+        let stderr = child
+            .stderr
+            .take()
+            .context("Failed to capture child stderr")?;
+
+        // Spawn tasks to forward output
+        tokio::spawn(async move {
+            let reader = BufReader::new(stdout);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                println!("{}", line);
+            }
+        });
+
+        tokio::spawn(async move {
+            let reader = BufReader::new(stderr);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                eprintln!("{}", line);
+            }
+        });
+
+        self.child = Some(child);
+        Ok(())
+    }
+
+    pub async fn wait(&mut self) -> Result<std::process::ExitStatus> {
+        if let Some(child) = &mut self.child {
+            let status = child.wait().await.context("Failed to wait on child")?;
+            self.child = None;
+            Ok(status)
+        } else {
+            anyhow::bail!("No process running")
+        }
     }
 
     pub async fn restart(&mut self) -> Result<()> {
-        anyhow::bail!("ProcessManager::restart not implemented yet")
+        println!("[supi] Restarting process...");
+        self.shutdown().await?;
+        self.spawn().await?;
+        Ok(())
     }
 
     pub async fn shutdown(&mut self) -> Result<()> {
-        anyhow::bail!("ProcessManager::shutdown not implemented yet")
+        if let Some(mut child) = self.child.take() {
+            println!("[supi] Stopping process...");
+            child.kill().await.context("Failed to kill child process")?;
+            let _ = child.wait().await;
+            println!("[supi] Process stopped");
+        }
+        Ok(())
+    }
+
+    pub fn is_running(&self) -> bool {
+        self.child.is_some()
     }
 }
