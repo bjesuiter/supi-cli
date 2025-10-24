@@ -1,4 +1,5 @@
-use crate::{seprintln, sprintln};
+use crate::output::LogColor;
+use crate::{seprintln, seprintln_colored, sprintln, sprintln_colored};
 use anyhow::{Context, Result};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
@@ -8,14 +9,16 @@ pub struct ProcessManager {
     command: String,
     args: Vec<String>,
     child: Option<Child>,
+    log_color: LogColor,
 }
 
 impl ProcessManager {
-    pub fn new(command: String, args: Vec<String>) -> Self {
+    pub fn new(command: String, args: Vec<String>, log_color: LogColor) -> Self {
         Self {
             command,
             args,
             child: None,
+            log_color,
         }
     }
 
@@ -24,9 +27,11 @@ impl ProcessManager {
             anyhow::bail!("Process already running");
         }
 
-        sprintln!(
+        sprintln_colored!(
+            self.log_color,
             "[supi] Starting child process: {} {:?}",
-            self.command, self.args
+            self.command,
+            self.args
         );
 
         let mut child = Command::new(&self.command)
@@ -79,7 +84,7 @@ impl ProcessManager {
     }
 
     pub async fn restart(&mut self) -> Result<()> {
-        sprintln!("[supi] Restarting child process...");
+        sprintln_colored!(self.log_color, "[supi] Restarting child process...");
         self.shutdown().await?;
         self.spawn().await?;
         Ok(())
@@ -87,7 +92,10 @@ impl ProcessManager {
 
     pub async fn shutdown(&mut self) -> Result<()> {
         if let Some(mut child) = self.child.take() {
-            sprintln!("[supi] Stopping child process gracefully...");
+            sprintln_colored!(
+                self.log_color,
+                "[supi] Stopping child process gracefully..."
+            );
 
             // Try graceful shutdown with SIGTERM first
             #[cfg(unix)]
@@ -102,14 +110,24 @@ impl ProcessManager {
                     // Wait up to 5 seconds for graceful exit
                     match timeout(Duration::from_secs(5), child.wait()).await {
                         Ok(Ok(_status)) => {
-                            sprintln!("[supi] Child process stopped gracefully");
+                            sprintln_colored!(
+                                self.log_color,
+                                "[supi] Child process stopped gracefully"
+                            );
                             return Ok(());
                         }
                         Ok(Err(e)) => {
-                            seprintln!("[supi] Error waiting for child process: {}", e);
+                            seprintln_colored!(
+                                self.log_color,
+                                "[supi] Error waiting for child process: {}",
+                                e
+                            );
                         }
                         Err(_) => {
-                            sprintln!("[supi] Child process didn't stop gracefully, forcing...");
+                            sprintln_colored!(
+                                self.log_color,
+                                "[supi] Child process didn't stop gracefully, forcing..."
+                            );
                         }
                     }
                 }
@@ -118,7 +136,7 @@ impl ProcessManager {
             // Force kill if graceful shutdown failed or on non-Unix platforms
             child.kill().await.context("Failed to kill child process")?;
             let _ = child.wait().await;
-            sprintln!("[supi] Child process stopped");
+            sprintln_colored!(self.log_color, "[supi] Child process stopped");
         }
         Ok(())
     }

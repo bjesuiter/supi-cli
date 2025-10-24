@@ -17,6 +17,11 @@ pub struct Cli {
     #[arg(long, default_value = "r")]
     pub restart_hotkey: char,
 
+    /// Color for supervisor log messages (default: yellow)
+    /// Supported: yellow, red, green, blue, cyan, magenta, white, none
+    #[arg(long, default_value = "yellow")]
+    pub log_color: String,
+
     /// Command to run
     #[arg(required = true)]
     pub command: String,

@@ -1,8 +1,56 @@
+use crossterm::style::{Color, ResetColor, SetForegroundColor};
 use std::io::{self, Write};
 use std::sync::Mutex;
 
 /// Global output synchronizer to prevent jumbled terminal output
 static OUTPUT_LOCK: Mutex<()> = Mutex::new(());
+
+/// Log color configuration for supervisor messages
+#[derive(Debug, Clone, Copy)]
+pub enum LogColor {
+    Yellow,
+    Red,
+    Green,
+    Blue,
+    Cyan,
+    Magenta,
+    White,
+    None,
+}
+
+impl LogColor {
+    /// Parse a color string from CLI argument
+    pub fn from_str(s: &str) -> Result<Self, String> {
+        match s.to_lowercase().as_str() {
+            "yellow" => Ok(LogColor::Yellow),
+            "red" => Ok(LogColor::Red),
+            "green" => Ok(LogColor::Green),
+            "blue" => Ok(LogColor::Blue),
+            "cyan" => Ok(LogColor::Cyan),
+            "magenta" => Ok(LogColor::Magenta),
+            "white" => Ok(LogColor::White),
+            "none" => Ok(LogColor::None),
+            _ => Err(format!(
+                "Invalid color '{}'. Supported: yellow, red, green, blue, cyan, magenta, white, none",
+                s
+            )),
+        }
+    }
+
+    /// Convert to crossterm Color
+    fn to_crossterm_color(self) -> Option<Color> {
+        match self {
+            LogColor::Yellow => Some(Color::Yellow),
+            LogColor::Red => Some(Color::Red),
+            LogColor::Green => Some(Color::Green),
+            LogColor::Blue => Some(Color::Blue),
+            LogColor::Cyan => Some(Color::Cyan),
+            LogColor::Magenta => Some(Color::Magenta),
+            LogColor::White => Some(Color::White),
+            LogColor::None => None,
+        }
+    }
+}
 
 /// Print a line to stdout with proper synchronization and raw mode support
 pub fn print_line(msg: &str) {
@@ -28,6 +76,44 @@ pub fn eprint_line(msg: &str) {
     let _ = handle.flush();
 }
 
+/// Print a line to stdout with color support
+pub fn print_line_colored(msg: &str, color: LogColor) {
+    let _guard = OUTPUT_LOCK.lock().unwrap();
+    let stdout = io::stdout();
+    let mut handle = stdout.lock();
+
+    if let Some(c) = color.to_crossterm_color() {
+        let _ = crossterm::execute!(handle, SetForegroundColor(c));
+    }
+
+    let _ = writeln!(handle, "{}\r", msg);
+
+    if color.to_crossterm_color().is_some() {
+        let _ = crossterm::execute!(handle, ResetColor);
+    }
+
+    let _ = handle.flush();
+}
+
+/// Print a line to stderr with color support
+pub fn eprint_line_colored(msg: &str, color: LogColor) {
+    let _guard = OUTPUT_LOCK.lock().unwrap();
+    let stderr = io::stderr();
+    let mut handle = stderr.lock();
+
+    if let Some(c) = color.to_crossterm_color() {
+        let _ = crossterm::execute!(handle, SetForegroundColor(c));
+    }
+
+    let _ = writeln!(handle, "{}\r", msg);
+
+    if color.to_crossterm_color().is_some() {
+        let _ = crossterm::execute!(handle, ResetColor);
+    }
+
+    let _ = handle.flush();
+}
+
 /// Macro to replace println! with synchronized output
 #[macro_export]
 macro_rules! sprintln {
@@ -41,5 +127,21 @@ macro_rules! sprintln {
 macro_rules! seprintln {
     ($($arg:tt)*) => {
         $crate::output::eprint_line(&format!($($arg)*))
+    };
+}
+
+/// Macro for colored println! with synchronized output
+#[macro_export]
+macro_rules! sprintln_colored {
+    ($color:expr, $($arg:tt)*) => {
+        $crate::output::print_line_colored(&format!($($arg)*), $color)
+    };
+}
+
+/// Macro for colored eprintln! with synchronized output
+#[macro_export]
+macro_rules! seprintln_colored {
+    ($color:expr, $($arg:tt)*) => {
+        $crate::output::eprint_line_colored(&format!($($arg)*), $color)
     };
 }
