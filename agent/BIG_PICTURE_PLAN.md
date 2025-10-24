@@ -274,6 +274,91 @@ forwarding) **Solution**:
 - Signal handling with mock processes
 - Output forwarding correctness
 
+### PTY-Based Testing (Future Enhancement)
+
+**Current approach:** Tests use direct stdin/stdout pipes **Issue:** Raw mode
+causes cosmetic artifacts in test output **Solution:** Use PTY (pseudo-terminal)
+for more realistic terminal testing
+
+**Benefits:**
+
+- Tests real terminal behavior (what users experience)
+- Clean test output (terminal handles formatting)
+- Proper raw mode testing
+- Can test terminal-specific features (colors, cursor movement)
+
+**Library options:**
+
+- **portable-pty** (Recommended) - Cross-platform, maintained by wezterm project
+- **expectrl** - Higher-level testing API, like Python's pexpect
+
+**Example implementation with portable-pty:**
+
+```rust
+// Add to Cargo.toml:
+// [dev-dependencies]
+// portable-pty = "0.8"
+
+use portable_pty::{CommandBuilder, PtySize, native_pty_system};
+use std::io::{Read, Write};
+
+#[test]
+fn test_hotkey_with_pty() {
+    let pty_system = native_pty_system();
+    
+    // Create PTY pair (master/slave)
+    let pair = pty_system.openpty(PtySize {
+        rows: 24,
+        cols: 80,
+        pixel_width: 0,
+        pixel_height: 0,
+    }).unwrap();
+    
+    // Spawn supi-cli in PTY slave
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.args(&["bash", "-c", "echo 'started'; sleep 10"]);
+    
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    drop(pair.slave); // Close slave fd in parent
+    
+    // Wait for startup
+    std::thread::sleep(Duration::from_secs(1));
+    
+    // Send hotkey through PTY master (like real keyboard)
+    let mut writer = pair.master.take_writer().unwrap();
+    writer.write_all(b"r").unwrap();
+    writer.flush().unwrap();
+    
+    // Give time for restart
+    std::thread::sleep(Duration::from_secs(1));
+    
+    // Read output from PTY master
+    let mut reader = pair.master.try_clone_reader().unwrap();
+    let mut output = vec![0u8; 4096];
+    let n = reader.read(&mut output).unwrap_or(0);
+    let output_str = String::from_utf8_lossy(&output[..n]);
+    
+    // Clean output, no raw mode artifacts
+    assert!(output_str.contains("Process started"));
+    
+    // Cleanup
+    let _ = child.kill();
+    let _ = child.wait();
+}
+```
+
+**Tradeoffs:**
+
+- ✅ Most accurate terminal testing
+- ✅ Clean test output
+- ❌ More complex test code
+- ❌ Platform-specific behavior (Linux vs macOS)
+- ❌ Slower tests
+- ❌ Harder to debug
+
+**Recommendation:** Consider for Phase 5+ if terminal-specific bugs emerge.
+Current pipe-based tests are sufficient for functional verification.
+
 ### Manual Testing Scenarios
 
 1. Long-running process (sleep infinity)
