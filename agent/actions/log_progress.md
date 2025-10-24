@@ -108,3 +108,8 @@ Implement signal handlers:
 
 Add tests: `test_sigterm_graceful_shutdown`, `test_sigint_graceful_shutdown`
 ```
+
+## Update BIG_PICTURE_PLAN.md
+
+Update BIG_PICTURE_PLAN.md to reflect the progress by ticking off all action
+items that are done.
