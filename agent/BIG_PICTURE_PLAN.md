@@ -134,7 +134,18 @@ src/
 - [x] Handle terminal cleanup on exit
 - [x] Make hotkey configurable
 
-### Phase 4: Advanced Features
+### Phase 4: PTY-Based Testing
+
+- [x] Add portable-pty dependency for realistic terminal testing
+- [x] Create helper function for PTY test setup
+- [x] Convert all tests with real commands to use PTY
+- [x] Test long-running processes with hotkey restart
+- [x] Test processes that exit immediately
+- [x] Test continuous output forwarding
+- [x] Test stubborn processes that ignore SIGTERM
+- [x] Clean test output without raw mode artifacts
+
+### Phase 5: Advanced Features
 
 - [x] Implement --stop-on-child-exit flag
 - [x] Handle child process exit scenarios
@@ -142,7 +153,7 @@ src/
 - [ ] Improve error messages and logging
 - [ ] Add process restart counter/statistics
 
-### Phase 5: Polish & Distribution
+### Phase 6: Polish & Distribution
 
 - [ ] Comprehensive error handling
 - [ ] Add informative status messages
@@ -152,7 +163,7 @@ src/
 - [ ] Documentation improvements
 - [ ] Add examples directory
 
-### Phase 6: Vim-Style Interactive Mode (Future)
+### Phase 7: Vim-Style Interactive Mode (Future)
 
 - [ ] Add terminal mode state machine (Normal/Insert modes)
 - [ ] Normal mode: Raw mode for hotkeys (current behavior)
@@ -167,7 +178,7 @@ src/
 - [ ] Display mode indicator (e.g., "-- INSERT --" or "-- NORMAL --")
 - [ ] Smooth mode transitions without disrupting child process
 
-### Phase 7: Optional TUI Mode (Future Enhancement)
+### Phase 8: Optional TUI Mode (Future Enhancement)
 
 - [ ] Add `--tui` flag to enable TUI mode (default: disabled)
 - [ ] **Library**: `ratatui` (formerly tui-rs) for terminal UI
@@ -233,7 +244,7 @@ coordination **Solution**: Use `tokio::select!` to multiplex events in main loop
 - Document Unix-only requirement
 - Consider future Windows support with named events
 
-### Challenge 6: Vim-Style Mode Switching (Phase 6)
+### Challenge 6: Vim-Style Mode Switching (Phase 7)
 
 **Problem**: Toggle between raw mode (hotkeys) and cooked mode (stdin
 forwarding) **Solution**:
@@ -246,7 +257,7 @@ forwarding) **Solution**:
 - Handle ESC key detection in insert mode to return to normal
 - Ensure smooth transitions without disrupting child output
 
-### Challenge 7: TUI Mode Integration (Phase 7)
+### Challenge 7: TUI Mode Integration (Phase 8)
 
 **Problem**: Manage TUI rendering while forwarding child output in real-time
 **Solution**:
@@ -274,90 +285,32 @@ forwarding) **Solution**:
 - Signal handling with mock processes
 - Output forwarding correctness
 
-### PTY-Based Testing (Future Enhancement)
+### PTY-Based Testing ✅ (Implemented in Phase 4)
 
-**Current approach:** Tests use direct stdin/stdout pipes **Issue:** Raw mode
-causes cosmetic artifacts in test output **Solution:** Use PTY (pseudo-terminal)
-for more realistic terminal testing
+**Implementation completed:** All tests with real commands now use PTY.
 
-**Benefits:**
+**What was implemented:**
 
-- Tests real terminal behavior (what users experience)
-- Clean test output (terminal handles formatting)
-- Proper raw mode testing
-- Can test terminal-specific features (colors, cursor movement)
+- Added `portable-pty = "0.8"` dependency
+- Created `create_pty_with_reader()` helper function
+- Converted 17 tests to use PTY (all tests that spawn real child processes)
+- Background reader thread pattern for non-blocking output capture
+- Clean test output without raw mode artifacts
 
-**Library options:**
+**Benefits achieved:**
 
-- **portable-pty** (Recommended) - Cross-platform, maintained by wezterm project
-- **expectrl** - Higher-level testing API, like Python's pexpect
+- ✅ Tests real terminal behavior (what users experience)
+- ✅ Clean test output (no raw mode artifacts in cargo test)
+- ✅ Proper raw mode testing
+- ✅ Consistent testing approach across all process tests
 
-**Example implementation with portable-pty:**
+**Test coverage:**
 
-```rust
-// Add to Cargo.toml:
-// [dev-dependencies]
-// portable-pty = "0.8"
-
-use portable_pty::{CommandBuilder, PtySize, native_pty_system};
-use std::io::{Read, Write};
-
-#[test]
-fn test_hotkey_with_pty() {
-    let pty_system = native_pty_system();
-    
-    // Create PTY pair (master/slave)
-    let pair = pty_system.openpty(PtySize {
-        rows: 24,
-        cols: 80,
-        pixel_width: 0,
-        pixel_height: 0,
-    }).unwrap();
-    
-    // Spawn supi-cli in PTY slave
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
-    cmd.args(&["bash", "-c", "echo 'started'; sleep 10"]);
-    
-    let mut child = pair.slave.spawn_command(cmd).unwrap();
-    drop(pair.slave); // Close slave fd in parent
-    
-    // Wait for startup
-    std::thread::sleep(Duration::from_secs(1));
-    
-    // Send hotkey through PTY master (like real keyboard)
-    let mut writer = pair.master.take_writer().unwrap();
-    writer.write_all(b"r").unwrap();
-    writer.flush().unwrap();
-    
-    // Give time for restart
-    std::thread::sleep(Duration::from_secs(1));
-    
-    // Read output from PTY master
-    let mut reader = pair.master.try_clone_reader().unwrap();
-    let mut output = vec![0u8; 4096];
-    let n = reader.read(&mut output).unwrap_or(0);
-    let output_str = String::from_utf8_lossy(&output[..n]);
-    
-    // Clean output, no raw mode artifacts
-    assert!(output_str.contains("Process started"));
-    
-    // Cleanup
-    let _ = child.kill();
-    let _ = child.wait();
-}
-```
-
-**Tradeoffs:**
-
-- ✅ Most accurate terminal testing
-- ✅ Clean test output
-- ❌ More complex test code
-- ❌ Platform-specific behavior (Linux vs macOS)
-- ❌ Slower tests
-- ❌ Harder to debug
-
-**Recommendation:** Consider for Phase 5+ if terminal-specific bugs emerge.
-Current pipe-based tests are sufficient for functional verification.
+- Phase 1 tests: 4 tests converted
+- Phase 2 tests: 4 tests converted
+- Phase 3 tests: 5 tests converted
+- Original PTY tests: 4 tests (now using helper function)
+- Total: 22 tests, all passing with clean output
 
 ### Manual Testing Scenarios
 
@@ -418,15 +371,16 @@ cargo build --release --target x86_64-unknown-linux-musl
 
 ## Implementation Timeline
 
-- **Phase 1**: 2-3 hours
-- **Phase 2**: 2-3 hours
-- **Phase 3**: 2-3 hours
-- **Phase 4**: 1-2 hours
-- **Phase 5**: 2-3 hours
-- **Phase 6**: 3-4 hours (future enhancement)
-- **Phase 7**: 3-5 hours (future enhancement)
-- **Total**: ~10-15 hours for core implementation (Phases 1-5)
-- **With enhancements**: ~16-24 hours (includes Phases 6 and/or 7)
+- **Phase 1**: 2-3 hours ✅
+- **Phase 2**: 2-3 hours ✅
+- **Phase 3**: 2-3 hours ✅
+- **Phase 4**: 2-3 hours ✅
+- **Phase 5**: 1-2 hours
+- **Phase 6**: 2-3 hours
+- **Phase 7**: 3-4 hours (future enhancement)
+- **Phase 8**: 3-5 hours (future enhancement)
+- **Total**: ~12-17 hours for core implementation (Phases 1-6)
+- **With enhancements**: ~18-26 hours (includes Phases 7 and/or 8)
 
 ## Success Criteria
 

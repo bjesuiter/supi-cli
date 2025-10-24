@@ -143,11 +143,75 @@ Interactive restart hotkey fully functional with graceful degradation.
 
 ---
 
-## Phase 4: Advanced Features ⏳
+## Phase 4: PTY-Based Testing ✅
 
 ### Status
 
-**IN PROGRESS**
+**COMPLETE**
+
+All tests with real commands converted to use PTY for clean, realistic terminal
+testing.
+
+### What's Implemented
+
+- Added `portable-pty = "0.8"` dev dependency
+- Created `create_pty_with_reader()` helper function for consistent PTY setup
+- Converted all 17 tests that spawn real child processes to use PTY
+- Background reader thread pattern for non-blocking output capture
+- Clean test output without raw mode artifacts in cargo test
+
+### Module Status
+
+```
+✅ tests/cli_tests.rs - PTY helper and all process tests converted
+✅ Cargo.toml         - portable-pty dependency added
+```
+
+### Tests Converted (17 tests)
+
+**Phase 1 Tests (4):**
+
+- ✅ `test_simple_echo` - Basic echo with PTY
+- ✅ `test_stop_on_child_exit_flag` - Exit flag with PTY
+- ✅ `test_stdout_forwarding` - Multi-line stdout via PTY
+- ✅ `test_stderr_forwarding` - Stderr forwarding via PTY
+
+**Phase 2 Tests (4):**
+
+- ✅ `test_sigterm_graceful_shutdown` - SIGTERM with PTY
+- ✅ `test_sigint_graceful_shutdown` - SIGINT with PTY
+- ✅ `test_restart_signal` - SIGUSR1 restart via PTY
+- ✅ `test_signal_forwarding_to_child` - Signal forwarding via PTY
+
+**Phase 3 Tests (5):**
+
+- ✅ `test_default_hotkey_restart` - Hotkey 'r' via PTY
+- ✅ `test_custom_hotkey_restart` - Custom hotkey via PTY
+- ✅ `test_non_hotkey_characters_ignored` - Non-hotkey chars via PTY
+- ✅ `test_hotkey_with_stop_on_child_exit` - Combined flags via PTY
+- ✅ `test_restart_with_stop_on_child_exit` - Restart + exit via PTY
+
+**Original PTY Tests (4):**
+
+- ✅ `test_pty_long_running_process_with_hotkey` - Long-running with hotkey
+- ✅ `test_pty_process_exits_immediately` - Quick exit process
+- ✅ `test_pty_continuous_output` - Continuous output forwarding
+- ✅ `test_pty_process_ignores_sigterm` - Stubborn process handling
+
+### Key Benefits
+
+- Clean test output (no raw mode artifacts in cargo test)
+- Realistic terminal behavior testing
+- Consistent testing approach across all process tests
+- All 22 tests passing with no warnings
+
+---
+
+## Phase 5: Advanced Features ⏳
+
+### Status
+
+**NOT STARTED**
 
 Implementing additional features and polish.
 
@@ -164,7 +228,7 @@ Implementing additional features and polish.
 
 ---
 
-## Phase 5: Polish & Distribution 📋
+## Phase 6: Polish & Distribution 📋
 
 ### Status
 
@@ -188,35 +252,51 @@ Final polish, documentation, and distribution setup.
 
 **Run tests**: `bx test` or `bx test -- test_name`
 
-**Current: 13 tests passing** (Phase 1, 2, & 3 complete)
+**Current: 22 tests passing** (Phases 1, 2, 3, & 4 complete)
 
 ### Test Breakdown
 
 - Phase 1: 9 tests (CLI + Process)
 - Phase 2: 4 tests (Signals)
-- Phase 3: Manual testing only (requires TTY)
-- Phase 4: 0 tests (not started)
+- Phase 3: 5 tests (Hotkeys)
+- Phase 4: 4 tests (PTY-specific scenarios)
+- **All tests now use PTY for clean output**
 
 ### All Tests
 
-**CLI Tests:**
+**CLI Tests (5):**
 
 - ✅ `test_help_flag`
 - ✅ `test_version_flag`
 - ✅ `test_version_flag_short`
 - ✅ `test_missing_command_fails`
+- ✅ `test_nonexistent_command`
 
-**Process Tests:**
+**Process Tests (4 - via PTY):**
 
 - ✅ `test_simple_echo`
 - ✅ `test_stop_on_child_exit_flag`
-- ✅ `test_nonexistent_command`
 - ✅ `test_stdout_forwarding`
 - ✅ `test_stderr_forwarding`
 
-**Signal Tests:**
+**Signal Tests (4 - via PTY):**
 
 - ✅ `test_sigterm_graceful_shutdown`
 - ✅ `test_sigint_graceful_shutdown`
 - ✅ `test_restart_signal`
 - ✅ `test_signal_forwarding_to_child`
+
+**Hotkey Tests (5 - via PTY):**
+
+- ✅ `test_default_hotkey_restart`
+- ✅ `test_custom_hotkey_restart`
+- ✅ `test_non_hotkey_characters_ignored`
+- ✅ `test_hotkey_with_stop_on_child_exit`
+- ✅ `test_restart_with_stop_on_child_exit`
+
+**PTY Scenario Tests (4):**
+
+- ✅ `test_pty_long_running_process_with_hotkey`
+- ✅ `test_pty_process_exits_immediately`
+- ✅ `test_pty_continuous_output`
+- ✅ `test_pty_process_ignores_sigterm`
