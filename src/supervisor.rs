@@ -1,6 +1,7 @@
 use crate::hotkey::HotkeyListener;
 use crate::process::ProcessManager;
 use crate::signals::{SignalEvent, SignalHandler};
+use crate::{seprintln, sprintln};
 use anyhow::Result;
 
 pub struct Supervisor {
@@ -35,16 +36,16 @@ impl Supervisor {
                 Some(signal_event) = self.signal_handler.next() => {
                     match signal_event {
                         SignalEvent::Terminate(signal_name) => {
-                            println!("[supi] Received {} signal, shutting down...", signal_name);
+                            sprintln!("[supi] Received {} signal, shutting down...", signal_name);
                             self.process_manager.shutdown().await?;
                             break;
                         }
                         SignalEvent::Restart(signal_name) => {
-                            println!("[supi] Received {} signal", signal_name);
+                            sprintln!("[supi] Received {} signal", signal_name);
                             if self.process_manager.is_running() {
                                 self.process_manager.restart().await?;
                             } else {
-                                println!("[supi] Child process not running, starting...");
+                                sprintln!("[supi] Child process not running, starting...");
                                 self.process_manager.spawn().await?;
                             }
                         }
@@ -57,11 +58,11 @@ impl Supervisor {
                         None => std::future::pending().await,
                     }
                 } => {
-                    println!("[supi] Hotkey pressed, restarting...");
+                    sprintln!("[supi] Hotkey pressed, restarting...");
                     if self.process_manager.is_running() {
                         self.process_manager.restart().await?;
                     } else {
-                        println!("[supi] Child process not running, starting...");
+                        sprintln!("[supi] Child process not running, starting...");
                         self.process_manager.spawn().await?;
                     }
                 }
@@ -69,23 +70,23 @@ impl Supervisor {
                 status = self.process_manager.wait(), if self.process_manager.is_running() => {
                     match status {
                         Ok(exit_status) => {
-                            println!("[supi] Child process exited with status: {}", exit_status);
+                            sprintln!("[supi] Child process exited with status: {}", exit_status);
 
                             if self.stop_on_child_exit {
-                                println!("[supi] Exiting (--stop-on-child-exit is set)");
+                                sprintln!("[supi] Exiting (--stop-on-child-exit is set)");
                                 break;
                             } else {
-                                println!("[supi] Child process exited, but supervisor continues running");
+                                sprintln!("[supi] Child process exited, but supervisor continues running");
                                 if self.hotkey_listener.is_some() {
-                                    println!("[supi] (Press Ctrl+C to exit, or press hotkey/send restart signal to restart)");
+                                    sprintln!("[supi] (Press Ctrl+C to exit, or press hotkey/send restart signal to restart)");
                                 } else {
-                                    println!("[supi] (Press Ctrl+C to exit, or send restart signal to restart)");
+                                    sprintln!("[supi] (Press Ctrl+C to exit, or send restart signal to restart)");
                                 }
                                 // Continue loop, waiting for signals
                             }
                         }
                         Err(e) => {
-                            eprintln!("[supi] Error waiting for child process: {}", e);
+                            seprintln!("[supi] Error waiting for child process: {}", e);
                             break;
                         }
                     }
