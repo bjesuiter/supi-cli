@@ -330,6 +330,16 @@ Final polish, documentation, and distribution setup.
 
 **Current: 30 tests passing** (Phases 1, 2, 3, 4, & 5 features complete)
 
+### Test File Organization
+
+Tests are organized by phase into separate files for better maintainability:
+- `tests/test_utils.rs` - Shared PTY setup helper function
+- `tests/phase1_tests.rs` - CLI and basic process tests (9 tests)
+- `tests/phase2_tests.rs` - Signal handling tests (4 tests)
+- `tests/phase3_tests.rs` - Interactive hotkey tests (5 tests)
+- `tests/phase4_tests.rs` - PTY-specific scenarios (4 tests)
+- `tests/phase5_tests.rs` - Silent flag and color output tests (8 tests)
+
 ### Test Breakdown
 
 - Phase 1: 9 tests (CLI + Process)
@@ -383,3 +393,11 @@ Final polish, documentation, and distribution setup.
 - ✅ `test_silent_flag_suppresses_supervisor_output`
 - ✅ `test_silent_flag_preserves_child_output`
 - ✅ `test_without_silent_flag_shows_supervisor_output`
+
+**Color Output Tests (5 - via PTY):**
+
+- ✅ `test_log_color_flag`
+- ✅ `test_colored_output`
+- ✅ `test_no_color_option`
+- ✅ `test_different_colors_produce_different_codes`
+- ✅ `test_info_color_independent`
