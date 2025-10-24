@@ -14,9 +14,13 @@ use supervisor::Supervisor;
 async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
-    println!("Starting supervisor for: {} {:?}", args.command, args.args);
+    println!("[supi] Supervisor PID: {}", std::process::id());
     println!(
-        "Config: restart_signal={}, restart_hotkey={}, stop_on_child_exit={}",
+        "[supi] Starting supervisor for: {} {:?}",
+        args.command, args.args
+    );
+    println!(
+        "[supi] Config: restart_signal={}, restart_hotkey={}, stop_on_child_exit={}",
         args.restart_signal, args.restart_hotkey, args.stop_on_child_exit
     );
 
