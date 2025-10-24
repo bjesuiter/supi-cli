@@ -6,6 +6,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2025-10-24
+
+### Added
+
+- Colored logging for supervisor messages via `--log-color` flag (default:
+  yellow)
+- Separate color control for informational messages via `--info-color` flag
+  (default: green)
+- Support for multiple color options: yellow, red, green, blue, cyan, magenta,
+  white, none
+- `--silent` flag to suppress all supervisor output while preserving child
+  process output
+- Restart debouncing via `--restart-debounce-ms` option (default: 1000ms, set to
+  0 to disable)
+- Configuration display in info messages showing configured hotkey and restart
+  signal
+- "Child process running (PID: xxx)" log message after spawn for better
+  visibility
+
+### Changed
+
+- Refactored output system from function-based to stateful `Output` struct
+- Output struct now encapsulates `log_color`, `info_color`, and `silent` flag
+- Clear separation between supervisor logs (suppressible) and child output
+  (always visible)
+- Improved informational messages to show actual configured values
+
+### Technical
+
+- Replaced macro-based output with `Output` struct methods throughout codebase
+- Output struct is clonable and can be passed to spawned tasks
+- Debouncing applies to both hotkey and signal restart triggers
+- Added 12 new tests for Phase 5 features (34 tests total, up from 22)
+
+### Features Summary
+
+✅ Colored and customizable supervisor output\
+✅ Silent mode for minimal output\
+✅ Restart debouncing to prevent rapid restarts\
+✅ Enhanced configuration visibility
+
+[0.2.0]: https://github.com/bjesuiter/supi-cli/releases/tag/v0.2.0
+
 ## [0.1.0] - 2025-10-24
 
 ### Added
