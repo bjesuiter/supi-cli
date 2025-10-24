@@ -30,20 +30,22 @@ fn test_help_flag() {
 #[test]
 fn test_version_flag() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
+    let cargo_pkg_version = env!("CARGO_PKG_VERSION");
     cmd.arg("--version")
         .assert()
         .success()
-        .stdout(predicate::str::contains("0.1.0"));
+        .stdout(predicate::str::contains(cargo_pkg_version));
 }
 
 // Manual test: cargo run -- -V
 #[test]
 fn test_version_flag_short() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
+    let cargo_pkg_version = env!("CARGO_PKG_VERSION");
     cmd.arg("-V")
         .assert()
         .success()
-        .stdout(predicate::str::contains("0.1.0"));
+        .stdout(predicate::str::contains(cargo_pkg_version));
 }
 
 // Manual test: cargo run --
