@@ -53,3 +53,15 @@ version = "0.3.2"
     silentExample.desc   = "Run with --silent flag (only child output visible, no supervisor messages)"
     debounceExample.cmd  = "cargo run -- --restart-debounce-ms 3000 bash -- -c 'for i in {1..5}; do echo \"Output $i\"; sleep 1; done'"
     debounceExample.desc = "Run with --restart-debounce-ms 3000 flag (3 second debounce window)"
+
+    # Publishing workflow
+    dry.cmd = [
+        "cargo clean",
+        "cargo build --release",
+        "cargo test --release",
+        "cargo package --list --allow-dirty",
+        "cargo publish --dry-run --allow-dirty",
+    ]
+    dry.desc = "Full dry-run publishing workflow (clean, build, test, package, dry-run publish)"
+    publish.cmd = ["cargo publish"]
+    publish.desc = "Publish to crates.io"

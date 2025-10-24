@@ -97,6 +97,55 @@ when the terminal running supi is focused.
 supi --restart-hotkey R ./my-app
 ```
 
+### `--restart-debounce-ms <MILLISECONDS>`
+
+**Default**: `1000` (1 second)
+
+Sets the debounce time for restart requests in milliseconds. This prevents
+accidental rapid restarts from multiple hotkey presses or signals. Set to `0` to
+disable debouncing.
+
+```bash
+# Prevent restarts within 3 seconds of each other
+supi --restart-debounce-ms 3000 npm run dev
+
+# Disable debouncing (allow instant restarts)
+supi --restart-debounce-ms 0 ./my-app
+```
+
+### `--log-color <COLOR>`
+
+**Default**: `yellow`
+
+Sets the color for supervisor log messages. Supported colors: `yellow`, `red`,
+`green`, `blue`, `cyan`, `magenta`, `white`, `none`.
+
+```bash
+supi --log-color cyan npm run dev
+```
+
+### `--info-color <COLOR>`
+
+**Default**: `green`
+
+Sets the color for informational messages (like hotkey prompts). Supported
+colors: `yellow`, `red`, `green`, `blue`, `cyan`, `magenta`, `white`, `none`.
+
+```bash
+supi --info-color blue npm run dev
+```
+
+### `--silent`
+
+**Default**: `false`
+
+Suppresses all supervisor output. Child process output remains visible. Useful
+when you want to see only the output from your managed process.
+
+```bash
+supi --silent npm run dev
+```
+
 ## Example Workflows
 
 ### Development Server with Quick Restart
@@ -144,19 +193,15 @@ cargo install --path .
 - Unix-like operating system (Linux, macOS)
 - Rust 1.86 or higher (for building from source)
 
-## Development
-
-This repository uses [bonnie/bx cli](https://github.com/codemonument/bx) as a
-task runner. `bx` is a custom fork of bonnie with a shorter CLI name for
-convenience.
-
 ## Distribution Targets
 
-Pre-built binaries are available for:
+Pre-built binaries might be provided later for:
 
 - `aarch64-apple-darwin` - Apple Silicon macOS
 - `x86_64-unknown-linux-gnu` - Linux with glibc
 - `x86_64-unknown-linux-musl` - Linux static binary (portable)
+
+Right now the main way to get supi is to install it from crates.io.
 
 ## License
 
@@ -173,3 +218,66 @@ at your option.
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
+
+---
+
+# Publishing Information
+
+## For Maintainers
+
+### Publishing a New Version to crates.io
+
+1. **Update version** in `Cargo.toml`:
+   ```toml
+   version = "0.3.0"  # Bump from 0.2.0
+   ```
+
+2. **Update** `CHANGELOG.md` with changes in the new version
+
+3. **Test everything**:
+   ```bash
+   cargo clean
+   cargo build --release
+   cargo test --release
+   cargo package --list  # Check included files
+   cargo publish --dry-run  # Test publication
+   ```
+
+4. **Commit changes**:
+   ```bash
+   git add Cargo.toml CHANGELOG.md
+   git commit -m "Bump version to 0.3.0"
+   git push
+   ```
+
+5. **Publish to crates.io**:
+   ```bash
+   cargo publish
+   ```
+
+6. **Tag the release**:
+   ```bash
+   git tag v0.3.0
+   git push origin v0.3.0
+   ```
+
+7. **Verify installation**:
+   ```bash
+   cargo install --locked supi-cli --force
+   supi --version
+   ```
+
+### Important Notes
+
+- **Can't unpublish**: Published versions are permanent (can only be yanked)
+- **Semantic versioning**: Follow semver for version numbers
+- **Cargo.lock**: Users will install with `--locked` for reproducible builds
+- **Test thoroughly**: Always run full test suite before publishing
+
+## Development Information
+
+This repository uses [bonnie/bx cli](https://github.com/codemonument/bx) as a
+task runner. `bx` is a custom fork of bonnie with a shorter CLI name for
+convenience.
+
+See [bonnie.toml](bonnie.toml) for all available commands.
