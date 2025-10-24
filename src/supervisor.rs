@@ -11,6 +11,7 @@ pub struct Supervisor {
     hotkey_listener: Option<HotkeyListener>,
     stop_on_child_exit: bool,
     log_color: LogColor,
+    info_color: LogColor,
 }
 
 impl Supervisor {
@@ -20,6 +21,7 @@ impl Supervisor {
         hotkey_listener: Option<HotkeyListener>,
         stop_on_child_exit: bool,
         log_color: LogColor,
+        info_color: LogColor,
     ) -> Self {
         Self {
             process_manager,
@@ -27,6 +29,7 @@ impl Supervisor {
             hotkey_listener,
             stop_on_child_exit,
             log_color,
+            info_color,
         }
     }
 
@@ -39,7 +42,7 @@ impl Supervisor {
         if let Some(ref mut listener) = self.hotkey_listener {
             listener.enable_raw_mode()?;
             sprintln_colored!(
-                self.log_color,
+                self.info_color,
                 "[supi] Hotkey listener active: press '{}' to restart",
                 listener.hotkey()
             );
@@ -93,9 +96,9 @@ impl Supervisor {
                             } else {
                                 sprintln_colored!(self.log_color, "[supi] Child process exited, but supervisor continues running");
                                 if self.hotkey_listener.is_some() {
-                                    sprintln_colored!(self.log_color, "[supi] (Press Ctrl+C to exit, or press hotkey/send restart signal to restart)");
+                                    sprintln_colored!(self.info_color, "[supi] (Press Ctrl+C to exit, or press hotkey/send restart signal to restart)");
                                 } else {
-                                    sprintln_colored!(self.log_color, "[supi] (Press Ctrl+C to exit, or send restart signal to restart)");
+                                    sprintln_colored!(self.info_color, "[supi] (Press Ctrl+C to exit, or send restart signal to restart)");
                                 }
                                 // Continue loop, waiting for signals
                             }

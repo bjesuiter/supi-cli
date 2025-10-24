@@ -220,26 +220,32 @@ Colored logging feature COMPLETE. Ready for additional features.
 **✅ Colored Logging for Supervisor Messages (COMPLETE):**
 
 - Added `--log-color` CLI flag (default: yellow)
+- Added `--info-color` CLI flag (default: green) for informational messages
 - Supported colors: yellow, red, green, blue, cyan, magenta, white, none
 - Uses crossterm's `SetForegroundColor` and `ResetColor`
-- All `[supi]` supervisor logs are colorized
+- Regular supervisor logs use `--log-color` (yellow by default)
+- Informational messages use `--info-color` (green by default):
+  - "Hotkey listener active" message
+  - "Press Ctrl+C to exit" messages
 - Child process output remains uncolored (passthrough)
 - Error handling for invalid colors with helpful message
 
 **Files Modified:**
 
-- `src/cli.rs`: Added log_color field (default: yellow)
+- `src/cli.rs`: Added log_color and info_color fields
 - `src/output.rs`: Added LogColor enum, colored print functions/macros
-- `src/main.rs`: Parse log_color and pass through to components
-- `src/supervisor.rs`: Use colored macros for all supervisor logs
-- `src/process.rs`: Use colored macros for all supervisor logs
+- `src/main.rs`: Parse both colors and pass through to components
+- `src/supervisor.rs`: Store both colors, use info_color for informational
+  messages
+- `src/process.rs`: Use log_color for all process-related logs
 
 **Testing:**
 
 - All 22 existing tests pass
 - Manual testing: default/custom/none colors work
-- Invalid color shows helpful error message
-- Help documentation includes new flag
+- Both log-color and info-color can be configured independently
+- Invalid colors show helpful error message
+- Help documentation includes both flags
 
 ### Planned Items
 

@@ -150,10 +150,12 @@ src/
 - [x] Implement --stop-on-child-exit flag
 - [x] Handle child process exit scenarios
 - [x] Add colored logging for supervisor messages
-  - Added `--log-color` CLI flag (default: yellow)
+  - Added `--log-color` CLI flag (default: yellow) for regular logs
+  - Added `--info-color` CLI flag (default: green) for informational messages
   - Supported colors: yellow, red, green, blue, cyan, magenta, white, none
   - Uses crossterm's color support (already in dependencies)
   - Colorizes `[supi]` prefix in all supervisor logs
+  - Separate color for informational messages (hotkey prompts, Ctrl+C hints)
   - Updated output.rs with colored output functions and macros
   - Passed color config through ProcessManager and Supervisor
 - [ ] Add restart debouncing (prevent rapid restarts)

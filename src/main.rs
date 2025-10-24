@@ -17,8 +17,9 @@ use supervisor::Supervisor;
 async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
-    // Parse log color
+    // Parse log colors
     let log_color = LogColor::from_str(&args.log_color).map_err(|e| anyhow::anyhow!(e))?;
+    let info_color = LogColor::from_str(&args.info_color).map_err(|e| anyhow::anyhow!(e))?;
 
     sprintln_colored!(log_color, "[supi] Supervisor PID: {}", std::process::id());
     sprintln_colored!(log_color, "[supi] Starting supervisor");
@@ -56,6 +57,7 @@ async fn main() -> anyhow::Result<()> {
         hotkey_listener,
         args.stop_on_child_exit,
         log_color,
+        info_color,
     );
 
     supervisor.run().await?;

@@ -22,6 +22,11 @@ pub struct Cli {
     #[arg(long, default_value = "yellow")]
     pub log_color: String,
 
+    /// Color for informational messages (default: green)
+    /// Supported: yellow, red, green, blue, cyan, magenta, white, none
+    #[arg(long, default_value = "green")]
+    pub info_color: String,
+
     /// Command to run
     #[arg(required = true)]
     pub command: String,
