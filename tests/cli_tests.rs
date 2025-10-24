@@ -194,7 +194,7 @@ fn test_restart_signal() {
     use std::process::Command as StdCommand;
 
     // Spawn supi-cli with a command that we can observe restarting
-    let mut child = StdCommand::new(env!("CARGO_BIN_EXE_supi-cli"))
+    let child = StdCommand::new(env!("CARGO_BIN_EXE_supi-cli"))
         .arg("--")
         .arg("bash")
         .arg("-c")

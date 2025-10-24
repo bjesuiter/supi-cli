@@ -1,3 +1,4 @@
+use crate::hotkey::HotkeyListener;
 use crate::process::ProcessManager;
 use crate::signals::{SignalEvent, SignalHandler};
 use anyhow::Result;
@@ -5,6 +6,7 @@ use anyhow::Result;
 pub struct Supervisor {
     process_manager: ProcessManager,
     signal_handler: SignalHandler,
+    hotkey_listener: Option<HotkeyListener>,
     stop_on_child_exit: bool,
 }
 
@@ -12,11 +14,13 @@ impl Supervisor {
     pub fn new(
         process_manager: ProcessManager,
         signal_handler: SignalHandler,
+        hotkey_listener: Option<HotkeyListener>,
         stop_on_child_exit: bool,
     ) -> Self {
         Self {
             process_manager,
             signal_handler,
+            hotkey_listener,
             stop_on_child_exit,
         }
     }
@@ -46,6 +50,21 @@ impl Supervisor {
                         }
                     }
                 }
+                // Handle hotkey press
+                Some(_) = async {
+                    match &mut self.hotkey_listener {
+                        Some(listener) => listener.next().await,
+                        None => std::future::pending().await,
+                    }
+                } => {
+                    println!("[supi] Hotkey pressed, restarting...");
+                    if self.process_manager.is_running() {
+                        self.process_manager.restart().await?;
+                    } else {
+                        println!("[supi] Child process not running, starting...");
+                        self.process_manager.spawn().await?;
+                    }
+                }
                 // Handle child process exit
                 status = self.process_manager.wait(), if self.process_manager.is_running() => {
                     match status {
@@ -57,7 +76,11 @@ impl Supervisor {
                                 break;
                             } else {
                                 println!("[supi] Child process exited, but supervisor continues running");
-                                println!("[supi] (Press Ctrl+C to exit, or send restart signal to restart)");
+                                if self.hotkey_listener.is_some() {
+                                    println!("[supi] (Press Ctrl+C to exit, or press hotkey/send restart signal to restart)");
+                                } else {
+                                    println!("[supi] (Press Ctrl+C to exit, or send restart signal to restart)");
+                                }
                                 // Continue loop, waiting for signals
                             }
                         }

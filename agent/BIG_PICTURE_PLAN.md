@@ -127,12 +127,12 @@ src/
 
 ### Phase 3: Interactive Hotkey
 
-- [ ] Set up crossterm raw mode
-- [ ] Create async task for reading terminal input
-- [ ] Detect restart hotkey press
-- [ ] Trigger restart on hotkey
-- [ ] Handle terminal cleanup on exit
-- [ ] Make hotkey configurable
+- [x] Set up crossterm raw mode
+- [x] Create async task for reading terminal input
+- [x] Detect restart hotkey press
+- [x] Trigger restart on hotkey
+- [x] Handle terminal cleanup on exit
+- [x] Make hotkey configurable
 
 ### Phase 4: Advanced Features
 
