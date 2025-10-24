@@ -1,7 +1,7 @@
 use clap::Parser;
 
 #[derive(Parser, Debug)]
-#[command(name = "supi-cli")]
+#[command(name = "supi")]
 #[command(version)]
 #[command(about = "A lightweight process supervisor with restart capabilities", long_about = None)]
 pub struct Cli {
