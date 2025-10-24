@@ -152,6 +152,21 @@ src/
 - [ ] Documentation improvements
 - [ ] Add examples directory
 
+### Phase 6: Vim-Style Interactive Mode (Future)
+
+- [ ] Add terminal mode state machine (Normal/Insert modes)
+- [ ] Normal mode: Raw mode for hotkeys (current behavior)
+  - Hotkeys active (restart, quit, etc.)
+  - No stdin forwarding to child
+- [ ] Insert mode: Pass-through mode for stdin
+  - Press 'i' to enter insert mode
+  - Forward stdin to child process
+  - Press ESC to return to normal mode
+  - Visual indicator showing current mode
+- [ ] Add --interactive flag to start in insert mode
+- [ ] Display mode indicator (e.g., "-- INSERT --" or "-- NORMAL --")
+- [ ] Smooth mode transitions without disrupting child process
+
 ## Key Technical Challenges
 
 ### Challenge 1: Concurrent Event Handling
@@ -190,6 +205,19 @@ coordination **Solution**: Use `tokio::select!` to multiplex events in main loop
 - Use conditional compilation for Unix-specific signals
 - Document Unix-only requirement
 - Consider future Windows support with named events
+
+### Challenge 6: Vim-Style Mode Switching (Phase 6)
+
+**Problem**: Toggle between raw mode (hotkeys) and cooked mode (stdin
+forwarding) **Solution**:
+
+- Maintain mode state (Normal/Insert)
+- Disable terminal raw mode when entering insert mode
+- Re-enable raw mode when returning to normal mode
+- Use channel to communicate stdin data to child process
+- Display visual indicator of current mode
+- Handle ESC key detection in insert mode to return to normal
+- Ensure smooth transitions without disrupting child output
 
 ## Testing Strategy
 
@@ -255,7 +283,6 @@ cargo build --release --target x86_64-unknown-linux-musl
 
 ## Future Enhancements (Out of Scope)
 
-- Interactive mode (forward stdin to child)
 - Configuration file support
 - Multiple process supervision
 - Process groups and dependencies
@@ -271,7 +298,9 @@ cargo build --release --target x86_64-unknown-linux-musl
 - **Phase 3**: 2-3 hours
 - **Phase 4**: 1-2 hours
 - **Phase 5**: 2-3 hours
-- **Total**: ~10-15 hours for full implementation
+- **Phase 6**: 3-4 hours (future enhancement)
+- **Total**: ~10-15 hours for core implementation, ~13-19 hours with interactive
+  mode
 
 ## Success Criteria
 
