@@ -125,14 +125,24 @@ kill -SIGUSR2 $(pgrep -f "supi python")
 
 ## Installation
 
+### From crates.io (Recommended)
+
 ```bash
+cargo install --locked supi-cli
+```
+
+### From Source
+
+```bash
+git clone https://github.com/bjesuiter/supi-cli
+cd supi-cli
 cargo install --path .
 ```
 
 ## Requirements
 
 - Unix-like operating system (Linux, macOS)
-- Rust 1.86 or higher
+- Rust 1.86 or higher (for building from source)
 
 ## Development
 

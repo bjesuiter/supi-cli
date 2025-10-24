@@ -200,7 +200,33 @@ src/
 - [ ] Improve error messages and logging
 - [ ] Add process restart counter/statistics
 
-### Phase 6: Polish & Distribution
+### Phase 6: Crates.io Deployment
+
+- [ ] Verify Cargo.toml metadata for crates.io
+  - Package name, version, description
+  - Authors, license, repository, homepage
+  - Keywords and categories
+  - Documentation link
+  - README path
+- [ ] Review and update README.md
+  - Add `cargo install --locked supi-cli` instructions
+  - Clear installation section with crates.io as primary method
+- [ ] Verify all dependencies are compatible with crates.io
+- [ ] Test build in clean environment
+  - `cargo build --release`
+  - `cargo test`
+- [ ] Prepare for publication
+  - `cargo package --list` (check included files)
+  - `cargo package` (test packaging)
+  - `cargo publish --dry-run` (test publication)
+- [ ] Publish to crates.io
+  - `cargo login` (one-time setup)
+  - `cargo publish`
+- [ ] Verify installation works
+  - Test on clean system: `cargo install --locked supi-cli`
+  - Test that installed binary works correctly
+
+### Phase 7: Polish & Distribution
 
 - [ ] Comprehensive error handling
 - [ ] Add informative status messages
@@ -210,7 +236,7 @@ src/
 - [ ] Documentation improvements
 - [ ] Add examples directory
 
-### Phase 7: Vim-Style Interactive Mode (Future)
+### Phase 8: Vim-Style Interactive Mode (Future)
 
 - [ ] Add terminal mode state machine (Normal/Insert modes)
 - [ ] Normal mode: Raw mode for hotkeys (current behavior)
@@ -225,7 +251,7 @@ src/
 - [ ] Display mode indicator (e.g., "-- INSERT --" or "-- NORMAL --")
 - [ ] Smooth mode transitions without disrupting child process
 
-### Phase 8: Optional TUI Mode (Future Enhancement)
+### Phase 9: Optional TUI Mode (Future Enhancement)
 
 - [ ] Add `--tui` flag to enable TUI mode (default: disabled)
 - [ ] **Library**: `ratatui` (formerly tui-rs) for terminal UI
@@ -317,7 +343,7 @@ sending multiple signals **Solution**:
 - Log informative messages when restart is debounced
 - No blocking behavior - just silently ignore rapid requests
 
-### Challenge 8: TUI Mode Integration (Phase 8)
+### Challenge 8: TUI Mode Integration (Phase 9)
 
 **Problem**: Manage TUI rendering while forwarding child output in real-time
 **Solution**:
@@ -441,11 +467,12 @@ cargo build --release --target x86_64-unknown-linux-musl
 - **Phase 3**: 2-3 hours ✅
 - **Phase 4**: 2-3 hours ✅
 - **Phase 5**: 1-2 hours
-- **Phase 6**: 2-3 hours
-- **Phase 7**: 3-4 hours (future enhancement)
-- **Phase 8**: 3-5 hours (future enhancement)
-- **Total**: ~12-17 hours for core implementation (Phases 1-6)
-- **With enhancements**: ~18-26 hours (includes Phases 7 and/or 8)
+- **Phase 6**: 1-2 hours (crates.io deployment)
+- **Phase 7**: 2-3 hours (polish & distribution)
+- **Phase 8**: 3-4 hours (future enhancement)
+- **Phase 9**: 3-5 hours (future enhancement)
+- **Total**: ~13-19 hours for core implementation (Phases 1-7)
+- **With enhancements**: ~19-28 hours (includes Phases 8 and/or 9)
 
 ## Success Criteria
 
