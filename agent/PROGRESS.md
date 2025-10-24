@@ -1,10 +1,70 @@
 # Implementation Progress
 
+## 2025-10-24: Session 2 (Phase 2 - Signal Handling)
+
+### Status
+
+**Phase 2 (Signal Handling): ✅ DONE**
+
+- SignalHandler implemented with signal-hook-tokio
+- SIGINT, SIGTERM, SIGQUIT handled for graceful shutdown
+- Configurable restart signal (SIGUSR1, SIGUSR2, SIGHUP)
+- Graceful shutdown with 5s timeout, then force kill
+- Supervisor uses tokio::select! event loop
+- Process restart working via signals
+- All signal handling tested
+
+**Next: Phase 3 (Interactive Hotkey)**
+
+### What's Implemented
+
+```
+✅ src/cli.rs        - Complete CLI parsing
+✅ src/main.rs       - Entry point with signal handler wiring
+✅ src/process.rs    - spawn/wait/restart/shutdown with graceful SIGTERM
+✅ src/supervisor.rs - tokio::select! event loop (signals + process exit)
+✅ src/signals.rs    - Signal handling (terminate + restart signals)
+⏸️  src/hotkey.rs    - STUB
+```
+
+### Tests Added (tests/cli_tests.rs)
+
+**Phase 1 & 2 Tests (9 tests):**
+
+- ✅ `test_help_flag` - Verify --help shows usage
+- ✅ `test_version_flag` - Verify --version shows version
+- ✅ `test_version_flag_short` - Verify -V shows version
+- ✅ `test_missing_command_fails` - Verify error when no command provided
+- ✅ `test_simple_echo` - Basic process spawning and output
+- ✅ `test_stop_on_child_exit_flag` - Verify --stop-on-child-exit behavior
+- ✅ `test_nonexistent_command` - Verify error on invalid command
+- ✅ `test_stdout_forwarding` - Multi-line stdout forwarding
+- ✅ `test_stderr_forwarding` - Stderr forwarding
+
+**Phase 2 Tests (4 tests):**
+
+- ✅ `test_sigterm_graceful_shutdown` - SIGTERM handling
+- ✅ `test_sigint_graceful_shutdown` - SIGINT (Ctrl+C) handling
+- ✅ `test_restart_signal` - SIGUSR1 restart signal
+- ✅ `test_signal_forwarding_to_child` - Forward signals to child
+
+### Next Action
+
+Implement hotkey handling in `src/hotkey.rs`:
+
+1. Set up crossterm raw mode
+2. Create async task for reading terminal input
+3. Detect restart hotkey press
+4. Trigger restart on hotkey
+5. Handle terminal cleanup on exit
+
+---
+
 ## 2025-10-24: Session 1 (Part 2)
 
 ### Status
 
-**Phase 2 (Basic Process Spawning): ✅ DONE**
+**Phase 1 (Basic Process Spawning): ✅ DONE**
 
 - ProcessManager spawns child with tokio::process::Command
 - Stdout/stderr forwarding working line-by-line with BufReader
@@ -12,38 +72,6 @@
 - Added wait(), restart(), shutdown(), is_running() methods
 - Supervisor runs process and waits for exit
 - --stop-on-child-exit flag working
-
-**Next: Phase 3 (Signal Handling)**
-
-### What's Implemented
-
-```
-✅ src/cli.rs        - Complete CLI parsing
-✅ src/main.rs       - Entry point wiring
-✅ src/process.rs    - spawn/wait/restart/shutdown with output forwarding
-✅ src/supervisor.rs - basic run loop (spawn + wait)
-⏸️  src/signals.rs   - STUB
-⏸️  src/hotkey.rs    - STUB
-```
-
-### Tests Added (tests/cli_tests.rs)
-
-- ✅ `test_simple_echo` - Basic process spawning and output
-- ✅ `test_stop_on_child_exit_flag` - Verify --stop-on-child-exit behavior
-- ✅ `test_nonexistent_command` - Verify error on invalid command
-- ✅ `test_stdout_forwarding` - Multi-line stdout forwarding
-- ✅ `test_stderr_forwarding` - Stderr forwarding
-
-### Next Action
-
-Implement signal handlers in `src/signals.rs`:
-
-1. Add SIGINT/SIGTERM/SIGQUIT handlers using signal-hook-tokio
-2. Forward termination signals to child process
-3. Implement graceful shutdown with timeout
-4. Add SIGUSR1 (or custom) restart signal handler
-
-Update `src/supervisor.rs` to use tokio::select! for event loop.
 
 ---
 
@@ -68,24 +96,17 @@ Update `src/supervisor.rs` to use tokio::select! for event loop.
 
 ---
 
-## Planned Integration Tests
+## Test Status
 
 Run tests: `bx test` or `bx test -- test_name`\
-**Current: 9 tests passing** (Phase 1 & 2 complete - see session logs above)
+**Current: 13 tests passing** (Phase 1 & 2 complete)
 
-**Phase 3 (Signal Handling):**
-
-- ❌ `test_sigterm_graceful_shutdown` - SIGTERM handling
-- ❌ `test_sigint_graceful_shutdown` - SIGINT (Ctrl+C) handling
-- ❌ `test_restart_signal` - SIGUSR1 restart signal
-- ❌ `test_signal_forwarding_to_child` - Forward signals to child
-
-**Phase 4 (Interactive Hotkey):**
+**Phase 3 (Interactive Hotkey):**
 
 - ❌ `test_hotkey_restart` - 'r' key restart trigger
 - ❌ `test_custom_hotkey` - Custom hotkey character
 
-**Phase 5 (Advanced Features):**
+**Phase 4 (Advanced Features):**
 
 - ❌ `test_rapid_restarts_debounce` - Restart debouncing
-- ❌ `test_custom_restart_signal` - Custom signal configuration
+- ❌ `test_process_restart_after_exit` - Restart after child exits

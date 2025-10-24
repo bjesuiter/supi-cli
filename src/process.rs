@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
+use tokio::time::{Duration, timeout};
 
 pub struct ProcessManager {
     command: String,
@@ -82,7 +83,35 @@ impl ProcessManager {
 
     pub async fn shutdown(&mut self) -> Result<()> {
         if let Some(mut child) = self.child.take() {
-            println!("[supi] Stopping process...");
+            println!("[supi] Stopping process gracefully...");
+
+            // Try graceful shutdown with SIGTERM first
+            #[cfg(unix)]
+            {
+                use nix::sys::signal::{Signal, kill};
+                use nix::unistd::Pid;
+
+                if let Some(pid) = child.id() {
+                    // Send SIGTERM for graceful shutdown
+                    let _ = kill(Pid::from_raw(pid as i32), Signal::SIGTERM);
+
+                    // Wait up to 5 seconds for graceful exit
+                    match timeout(Duration::from_secs(5), child.wait()).await {
+                        Ok(Ok(_status)) => {
+                            println!("[supi] Process stopped gracefully");
+                            return Ok(());
+                        }
+                        Ok(Err(e)) => {
+                            eprintln!("[supi] Error waiting for process: {}", e);
+                        }
+                        Err(_) => {
+                            println!("[supi] Process didn't stop gracefully, forcing...");
+                        }
+                    }
+                }
+            }
+
+            // Force kill if graceful shutdown failed or on non-Unix platforms
             child.kill().await.context("Failed to kill child process")?;
             let _ = child.wait().await;
             println!("[supi] Process stopped");

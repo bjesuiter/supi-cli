@@ -118,12 +118,12 @@ src/
 
 ### Phase 2: Signal Handling
 
-- [ ] Set up signal handlers for SIGINT, SIGTERM, SIGQUIT
-- [ ] Implement graceful shutdown (send SIGTERM to child, wait, force kill if
+- [x] Set up signal handlers for SIGINT, SIGTERM, SIGQUIT
+- [x] Implement graceful shutdown (send SIGTERM to child, wait, force kill if
       needed)
-- [ ] Add configurable restart signal (default SIGUSR1)
-- [ ] Implement restart logic (terminate child, respawn)
-- [ ] Test signal handling
+- [x] Add configurable restart signal (default SIGUSR1)
+- [x] Implement restart logic (terminate child, respawn)
+- [x] Test signal handling
 
 ### Phase 3: Interactive Hotkey
 

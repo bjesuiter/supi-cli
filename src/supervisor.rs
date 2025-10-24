@@ -1,15 +1,22 @@
 use crate::process::ProcessManager;
+use crate::signals::{SignalEvent, SignalHandler};
 use anyhow::Result;
 
 pub struct Supervisor {
     process_manager: ProcessManager,
+    signal_handler: SignalHandler,
     stop_on_child_exit: bool,
 }
 
 impl Supervisor {
-    pub fn new(process_manager: ProcessManager, stop_on_child_exit: bool) -> Self {
+    pub fn new(
+        process_manager: ProcessManager,
+        signal_handler: SignalHandler,
+        stop_on_child_exit: bool,
+    ) -> Self {
         Self {
             process_manager,
+            signal_handler,
             stop_on_child_exit,
         }
     }
@@ -18,18 +25,49 @@ impl Supervisor {
         // Spawn initial process
         self.process_manager.spawn().await?;
 
-        // Wait for process to exit
-        let status = self.process_manager.wait().await?;
+        loop {
+            tokio::select! {
+                // Handle signals
+                Some(signal_event) = self.signal_handler.next() => {
+                    match signal_event {
+                        SignalEvent::Terminate => {
+                            println!("[supi] Received termination signal, shutting down...");
+                            self.process_manager.shutdown().await?;
+                            break;
+                        }
+                        SignalEvent::Restart => {
+                            println!("[supi] Received restart signal");
+                            if self.process_manager.is_running() {
+                                self.process_manager.restart().await?;
+                            } else {
+                                println!("[supi] Process not running, starting...");
+                                self.process_manager.spawn().await?;
+                            }
+                        }
+                    }
+                }
+                // Handle child process exit
+                status = self.process_manager.wait(), if self.process_manager.is_running() => {
+                    match status {
+                        Ok(exit_status) => {
+                            println!("[supi] Process exited with status: {}", exit_status);
 
-        println!("[supi] Process exited with status: {}", status);
-
-        if self.stop_on_child_exit {
-            println!("[supi] Exiting (--stop-on-child-exit is set)");
-        } else {
-            println!("[supi] Process exited, but supervisor continues running");
-            println!("[supi] (Press Ctrl+C to exit, or send restart signal to restart)");
-            // TODO: In next phase, add event loop for signals/hotkeys
-            // For now, just exit
+                            if self.stop_on_child_exit {
+                                println!("[supi] Exiting (--stop-on-child-exit is set)");
+                                break;
+                            } else {
+                                println!("[supi] Process exited, but supervisor continues running");
+                                println!("[supi] (Press Ctrl+C to exit, or send restart signal to restart)");
+                                // Continue loop, waiting for signals
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("[supi] Error waiting for process: {}", e);
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
         Ok(())

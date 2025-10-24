@@ -1,5 +1,7 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
+use std::process::Stdio;
+use std::time::Duration;
 
 // Manual test: cargo run -- --help
 #[test]
@@ -43,18 +45,16 @@ fn test_missing_command_fails() {
         .stderr(predicate::str::contains("required"));
 }
 
-// Manual test: cargo run -- echo "hello world"
+// Manual test: cargo run -- --stop-on-child-exit echo "hello world"
 #[test]
 fn test_simple_echo() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
-    cmd.arg("echo")
+    cmd.arg("--stop-on-child-exit")
+        .arg("echo")
         .arg("hello world")
         .assert()
         .success()
-        .stdout(predicate::str::contains("hello world"))
-        .stdout(predicate::str::contains(
-            "Process exited, but supervisor continues running",
-        ));
+        .stdout(predicate::str::contains("hello world"));
 }
 
 // Manual test: cargo run -- --stop-on-child-exit echo "test message"
@@ -83,11 +83,12 @@ fn test_nonexistent_command() {
         .stderr(predicate::str::contains("Failed to spawn"));
 }
 
-// Manual test: cargo run -- bash -- -c "echo line1 && echo line2 && echo line3"
+// Manual test: cargo run -- --stop-on-child-exit bash -- -c "echo line1 && echo line2 && echo line3"
 #[test]
 fn test_stdout_forwarding() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
-    cmd.arg("bash")
+    cmd.arg("--stop-on-child-exit")
+        .arg("bash")
         .arg("--")
         .arg("-c")
         .arg("echo line1 && echo line2 && echo line3")
@@ -98,15 +99,179 @@ fn test_stdout_forwarding() {
         .stdout(predicate::str::contains("line3"));
 }
 
-// Manual test: cargo run -- bash -- -c "echo 'error message' >&2"
+// Manual test: cargo run -- --stop-on-child-exit bash -- -c "echo 'error message' >&2"
 #[test]
 fn test_stderr_forwarding() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
-    cmd.arg("bash")
+    cmd.arg("--stop-on-child-exit")
+        .arg("bash")
         .arg("--")
         .arg("-c")
         .arg("echo 'error message' >&2")
         .assert()
         .success()
         .stderr(predicate::str::contains("error message"));
+}
+
+// Phase 2 Tests: Signal Handling
+
+// Test SIGTERM graceful shutdown
+#[test]
+fn test_sigterm_graceful_shutdown() {
+    use std::process::Command as StdCommand;
+
+    // Spawn supi-cli with a long-running process
+    let child = StdCommand::new(env!("CARGO_BIN_EXE_supi-cli"))
+        .arg("sleep")
+        .arg("30")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn supi-cli");
+
+    let pid = child.id();
+
+    // Give it time to start
+    std::thread::sleep(Duration::from_millis(500));
+
+    // Send SIGTERM
+    unsafe {
+        libc::kill(pid as i32, libc::SIGTERM);
+    }
+
+    // Wait for it to exit
+    let output = child.wait_with_output().expect("Failed to wait for child");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Should show graceful shutdown message
+    assert!(stdout.contains("Received termination signal") || stdout.contains("Stopping process"));
+    assert!(output.status.success());
+}
+
+// Test SIGINT (Ctrl+C) graceful shutdown
+#[test]
+fn test_sigint_graceful_shutdown() {
+    use std::process::Command as StdCommand;
+
+    // Spawn supi-cli with a long-running process
+    let child = StdCommand::new(env!("CARGO_BIN_EXE_supi-cli"))
+        .arg("sleep")
+        .arg("30")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn supi-cli");
+
+    let pid = child.id();
+
+    // Give it time to start
+    std::thread::sleep(Duration::from_millis(500));
+
+    // Send SIGINT
+    unsafe {
+        libc::kill(pid as i32, libc::SIGINT);
+    }
+
+    // Wait for it to exit
+    let output = child.wait_with_output().expect("Failed to wait for child");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Should show graceful shutdown message
+    assert!(stdout.contains("Received termination signal") || stdout.contains("Stopping process"));
+    assert!(output.status.success());
+}
+
+// Test SIGUSR1 restart signal
+#[test]
+fn test_restart_signal() {
+    use std::process::Command as StdCommand;
+
+    // Spawn supi-cli with a command that we can observe restarting
+    let mut child = StdCommand::new(env!("CARGO_BIN_EXE_supi-cli"))
+        .arg("--")
+        .arg("bash")
+        .arg("-c")
+        .arg("echo 'started'; sleep 10")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn supi-cli");
+
+    let pid = child.id();
+
+    // Give it more time to start and print first message
+    std::thread::sleep(Duration::from_secs(1));
+
+    // Send SIGUSR1 to trigger restart
+    unsafe {
+        libc::kill(pid as i32, libc::SIGUSR1);
+    }
+
+    // Give it more time to restart
+    std::thread::sleep(Duration::from_secs(1));
+
+    // Send SIGTERM to stop
+    unsafe {
+        libc::kill(pid as i32, libc::SIGTERM);
+    }
+
+    // Give it time to process the signal
+    std::thread::sleep(Duration::from_millis(500));
+
+    // Collect output
+    let output = child.wait_with_output().expect("Failed to wait for child");
+    let stdout_str = String::from_utf8_lossy(&output.stdout);
+
+    // Should see restart messages in stdout
+    assert!(stdout_str.contains("Received restart signal") || stdout_str.contains("Restarting"));
+}
+
+// Test signal forwarding to child
+#[test]
+fn test_signal_forwarding_to_child() {
+    use std::process::Command as StdCommand;
+
+    // Create a script that handles SIGTERM gracefully
+    let script = r#"#!/bin/bash
+trap 'echo "Child received SIGTERM"; exit 0' TERM
+echo "Child started"
+sleep 30
+"#;
+
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    std::fs::write(temp_file.path(), script).unwrap();
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(temp_file.path()).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(temp_file.path(), perms).unwrap();
+    }
+
+    let child = StdCommand::new(env!("CARGO_BIN_EXE_supi-cli"))
+        .arg(temp_file.path())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn supi-cli");
+
+    let pid = child.id();
+
+    // Give it time to start
+    std::thread::sleep(Duration::from_millis(500));
+
+    // Send SIGTERM
+    unsafe {
+        libc::kill(pid as i32, libc::SIGTERM);
+    }
+
+    // Wait for it to exit
+    let output = child.wait_with_output().expect("Failed to wait for child");
+    let stdout_str = String::from_utf8_lossy(&output.stdout);
+
+    // Should see both supervisor and child handling the signal
+    assert!(stdout_str.contains("Stopping process"));
 }

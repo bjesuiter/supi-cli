@@ -7,6 +7,7 @@ mod supervisor;
 use clap::Parser;
 use cli::Cli;
 use process::ProcessManager;
+use signals::SignalHandler;
 use supervisor::Supervisor;
 
 #[tokio::main]
@@ -20,7 +21,8 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let process_manager = ProcessManager::new(args.command, args.args);
-    let mut supervisor = Supervisor::new(process_manager, args.stop_on_child_exit);
+    let signal_handler = SignalHandler::new(&args.restart_signal)?;
+    let mut supervisor = Supervisor::new(process_manager, signal_handler, args.stop_on_child_exit);
 
     supervisor.run().await?;
 
