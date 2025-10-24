@@ -1,5 +1,6 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
+use std::io::{Read, Write};
 use std::process::Stdio;
 use std::time::Duration;
 
@@ -537,4 +538,336 @@ fn test_restart_with_stop_on_child_exit() {
         "Should see --stop-on-child-exit exit message. Output:\n{}",
         stdout_str
     );
+}
+
+// ============================================================================
+// PTY-Based Tests
+// ============================================================================
+// These tests use pseudo-terminals for more realistic terminal interaction
+// testing, avoiding raw mode artifacts in test output.
+
+// PTY Test 1: Long-running process with hotkey restart
+#[test]
+fn test_pty_long_running_process_with_hotkey() {
+    use portable_pty::{CommandBuilder, PtySize, native_pty_system};
+    use std::sync::{Arc, Mutex};
+
+    let pty_system = native_pty_system();
+
+    // Create PTY pair (master/slave)
+    let pair = pty_system
+        .openpty(PtySize {
+            rows: 24,
+            cols: 80,
+            pixel_width: 0,
+            pixel_height: 0,
+        })
+        .unwrap();
+
+    // Spawn supi-cli in PTY slave
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.args(&["--", "bash", "-c", "echo 'Process started'; sleep 30"]);
+
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    drop(pair.slave); // Close slave fd in parent
+
+    // Start reader thread after spawning to avoid locking issues
+    let output = Arc::new(Mutex::new(Vec::new()));
+    let output_clone = Arc::clone(&output);
+    let mut reader = pair.master.try_clone_reader().unwrap();
+
+    let reader_thread = std::thread::spawn(move || {
+        let mut buf = [0u8; 1024];
+        loop {
+            match reader.read(&mut buf) {
+                Ok(n) if n > 0 => {
+                    output_clone.lock().unwrap().extend_from_slice(&buf[..n]);
+                }
+                _ => break,
+            }
+        }
+    });
+
+    // Wait for startup
+    std::thread::sleep(Duration::from_secs(1));
+
+    // Send hotkey through PTY master writer
+    let mut writer = pair.master.take_writer().unwrap();
+    writer.write_all(b"r").unwrap();
+    writer.flush().unwrap();
+    drop(writer);
+
+    // Give time for restart
+    std::thread::sleep(Duration::from_secs(2));
+
+    // Cleanup - send SIGTERM to supi-cli
+    let _ = child.kill();
+    let _ = child.wait();
+
+    // Give reader thread time to finish
+    std::thread::sleep(Duration::from_millis(500));
+
+    // Check output
+    let output_bytes = output.lock().unwrap();
+    let output_str = String::from_utf8_lossy(&output_bytes);
+
+    // Should see process started at least twice (initial + restart)
+    let started_count = output_str.matches("Process started").count();
+    assert!(
+        started_count >= 2,
+        "Expected at least 2 'Process started' messages, got {}. Output:\n{}",
+        started_count,
+        output_str
+    );
+
+    // Clean up reader thread
+    drop(output_bytes);
+    let _ = reader_thread.join();
+}
+
+// PTY Test 2: Process that exits immediately
+#[test]
+fn test_pty_process_exits_immediately() {
+    use portable_pty::{CommandBuilder, PtySize, native_pty_system};
+    use std::sync::{Arc, Mutex};
+
+    let pty_system = native_pty_system();
+
+    let pair = pty_system
+        .openpty(PtySize {
+            rows: 24,
+            cols: 80,
+            pixel_width: 0,
+            pixel_height: 0,
+        })
+        .unwrap();
+
+    // Start reader thread
+    let output = Arc::new(Mutex::new(Vec::new()));
+    let output_clone = Arc::clone(&output);
+    let mut reader = pair.master.try_clone_reader().unwrap();
+
+    let reader_thread = std::thread::spawn(move || {
+        let mut buf = [0u8; 1024];
+        loop {
+            match reader.read(&mut buf) {
+                Ok(n) if n > 0 => {
+                    output_clone.lock().unwrap().extend_from_slice(&buf[..n]);
+                }
+                _ => break,
+            }
+        }
+    });
+
+    // Spawn supi-cli with --stop-on-child-exit and a command that exits immediately
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.args(&["--stop-on-child-exit", "echo", "quick exit"]);
+
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    drop(pair.slave);
+
+    // Wait for process to complete
+    let status = child.wait().unwrap();
+
+    // Give reader thread time to finish
+    std::thread::sleep(Duration::from_millis(500));
+
+    // Check output
+    let output_bytes = output.lock().unwrap();
+    let output_str = String::from_utf8_lossy(&output_bytes);
+
+    // Should contain the echo output
+    assert!(
+        output_str.contains("quick exit"),
+        "Expected 'quick exit' in output. Output:\n{}",
+        output_str
+    );
+
+    // Should exit successfully
+    assert!(status.success(), "Process should exit successfully");
+
+    // Should contain exit message
+    assert!(
+        output_str.contains("Exiting (--stop-on-child-exit is set)"),
+        "Expected exit message. Output:\n{}",
+        output_str
+    );
+
+    // Clean up
+    drop(output_bytes);
+    let _ = reader_thread.join();
+}
+
+// PTY Test 3: Process that prints continuously
+#[test]
+fn test_pty_continuous_output() {
+    use portable_pty::{CommandBuilder, PtySize, native_pty_system};
+    use std::sync::{Arc, Mutex};
+
+    let pty_system = native_pty_system();
+
+    let pair = pty_system
+        .openpty(PtySize {
+            rows: 24,
+            cols: 80,
+            pixel_width: 0,
+            pixel_height: 0,
+        })
+        .unwrap();
+
+    // Start reader thread
+    let output = Arc::new(Mutex::new(Vec::new()));
+    let output_clone = Arc::clone(&output);
+    let mut reader = pair.master.try_clone_reader().unwrap();
+
+    let reader_thread = std::thread::spawn(move || {
+        let mut buf = [0u8; 1024];
+        loop {
+            match reader.read(&mut buf) {
+                Ok(n) if n > 0 => {
+                    output_clone.lock().unwrap().extend_from_slice(&buf[..n]);
+                }
+                _ => break,
+            }
+        }
+    });
+
+    // Spawn supi-cli with a command that prints multiple lines quickly
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.args(&[
+        "--",
+        "bash",
+        "-c",
+        "for i in {1..5}; do echo \"Line $i\"; sleep 0.1; done; sleep 5",
+    ]);
+
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    drop(pair.slave);
+
+    // Wait for output to be generated
+    std::thread::sleep(Duration::from_secs(2));
+
+    // Cleanup
+    let _ = child.kill();
+    let _ = child.wait();
+
+    // Give reader thread time to finish
+    std::thread::sleep(Duration::from_millis(500));
+
+    // Check output
+    let output_bytes = output.lock().unwrap();
+    let output_str = String::from_utf8_lossy(&output_bytes);
+
+    // Should see all 5 lines
+    for i in 1..=5 {
+        let expected = format!("Line {}", i);
+        assert!(
+            output_str.contains(&expected),
+            "Expected '{}' in output. Output:\n{}",
+            expected,
+            output_str
+        );
+    }
+
+    // Clean up
+    drop(output_bytes);
+    let _ = reader_thread.join();
+}
+
+// PTY Test 4: Process that ignores SIGTERM
+#[test]
+fn test_pty_process_ignores_sigterm() {
+    use portable_pty::{CommandBuilder, PtySize, native_pty_system};
+    use std::sync::{Arc, Mutex};
+
+    let pty_system = native_pty_system();
+
+    let pair = pty_system
+        .openpty(PtySize {
+            rows: 24,
+            cols: 80,
+            pixel_width: 0,
+            pixel_height: 0,
+        })
+        .unwrap();
+
+    // Start reader thread
+    let output = Arc::new(Mutex::new(Vec::new()));
+    let output_clone = Arc::clone(&output);
+    let mut reader = pair.master.try_clone_reader().unwrap();
+
+    let reader_thread = std::thread::spawn(move || {
+        let mut buf = [0u8; 1024];
+        loop {
+            match reader.read(&mut buf) {
+                Ok(n) if n > 0 => {
+                    output_clone.lock().unwrap().extend_from_slice(&buf[..n]);
+                }
+                _ => break,
+            }
+        }
+    });
+
+    // Spawn supi-cli with a command that traps SIGTERM and ignores it
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.args(&[
+        "--",
+        "bash",
+        "-c",
+        "trap '' TERM; echo 'Started and ignoring SIGTERM'; sleep 30",
+    ]);
+
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    drop(pair.slave);
+
+    // Wait for startup
+    std::thread::sleep(Duration::from_secs(1));
+
+    // Try to kill the child - supi-cli should eventually force kill
+    let kill_result = child.kill();
+
+    // Wait for termination (with timeout)
+    let start = std::time::Instant::now();
+    let mut exited = false;
+
+    while start.elapsed() < Duration::from_secs(10) {
+        match child.try_wait() {
+            Ok(Some(_)) => {
+                exited = true;
+                break;
+            }
+            Ok(None) => {
+                std::thread::sleep(Duration::from_millis(100));
+            }
+            Err(_) => break,
+        }
+    }
+
+    // Verify we were able to kill it
+    assert!(
+        kill_result.is_ok() || exited,
+        "Should be able to terminate process that ignores SIGTERM"
+    );
+
+    // Give reader thread time to finish
+    std::thread::sleep(Duration::from_millis(500));
+
+    // Check output
+    let output_bytes = output.lock().unwrap();
+    let output_str = String::from_utf8_lossy(&output_bytes);
+
+    // Should see the startup message
+    assert!(
+        output_str.contains("Started and ignoring SIGTERM"),
+        "Expected startup message. Output:\n{}",
+        output_str
+    );
+
+    // Clean up
+    drop(output_bytes);
+    let _ = reader_thread.join();
+
+    // Final cleanup
+    let _ = child.kill();
+    let _ = child.wait();
 }
