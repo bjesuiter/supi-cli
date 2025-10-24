@@ -159,6 +159,16 @@ src/
   - Added "Child process running (PID: xxx)" log for clarity
   - Updated output.rs with colored output functions and macros
   - Passed color config through ProcessManager and Supervisor
+- [ ] Add --silent flag and refactor Output to stateful struct
+  - Add `--silent` CLI flag to suppress all supervisor output
+  - Child process output always visible (never suppressed)
+  - Refactor output.rs from function-based to stateful `Output` struct
+  - Output struct encapsulates: log_color, info_color, silent flag
+  - Methods: `log()`, `info()`, `forward_stdout()`, `forward_stderr()`
+  - Replace macro-based output with struct methods throughout codebase
+  - Maintain thread-safety with internal mutex
+  - Clear separation between supervisor logs vs child output
+  - Add silentExample script to bonnie.toml
 - [ ] Add restart debouncing (prevent rapid restarts)
 - [ ] Improve error messages and logging
 - [ ] Add process restart counter/statistics
