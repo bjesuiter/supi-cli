@@ -23,6 +23,7 @@ after each phase as defined in @actions/writing_integration_tests.md.
   - `--stop-on-child-exit`: Boolean flag
   - `--restart-signal <SIGNAL>`: Signal name (default: SIGUSR1)
   - `--restart-hotkey <KEY>`: Single character (default: 'r')
+  - `--restart-debounce-ms <MILLISECONDS>`: Debounce time in ms (default: 1000)
   - Positional args: Command and its arguments
 
 ### 2. Process Management
@@ -172,6 +173,25 @@ src/
   - Added 3 tests for --silent flag functionality
   - All 25 tests passing
 - [ ] Add restart debouncing (prevent rapid restarts)
+  - Add `--restart-debounce-ms <MILLISECONDS>` CLI option (default: 1000)
+  - If 0, no debounce (immediate restart allowed)
+  - **Implementation approach**:
+    - Track timestamp of last restart request (Option<Instant>)
+    - On restart trigger (signal or hotkey):
+      - Check if last restart was within debounce window
+      - If yes: Log "Restart request ignored (debounce active)" and skip
+      - If no: Proceed with restart and update timestamp
+    - Store debounce_ms and last_restart in Supervisor struct
+    - Use tokio::time::Instant for async-compatible timing
+  - **Testing strategy**:
+    - Test with debounce disabled (0ms): rapid restarts work
+    - Test with debounce enabled (100ms): rapid requests ignored
+    - Test with debounce window expired: restart succeeds
+    - Test that both hotkey and signal respect debounce
+  - **User experience**:
+    - Log informative message when debounce prevents restart
+    - Show remaining debounce time in message (optional enhancement)
+    - No blocking/delays - just ignore requests within window
 - [ ] Improve error messages and logging
 - [ ] Add process restart counter/statistics
 
@@ -279,7 +299,20 @@ forwarding) **Solution**:
 - Handle ESC key detection in insert mode to return to normal
 - Ensure smooth transitions without disrupting child output
 
-### Challenge 7: TUI Mode Integration (Phase 8)
+### Challenge 7: Restart Debouncing (Phase 5)
+
+**Problem**: Prevent accidental rapid restarts from user mashing hotkey or
+sending multiple signals **Solution**:
+
+- Track last restart timestamp using `tokio::time::Instant`
+- Check elapsed time before allowing restart
+- Configurable debounce window via `--restart-debounce-ms` (default: 1000ms)
+- Setting to 0 disables debouncing for power users
+- Apply debouncing to both hotkey and signal restart triggers
+- Log informative messages when restart is debounced
+- No blocking behavior - just silently ignore rapid requests
+
+### Challenge 8: TUI Mode Integration (Phase 8)
 
 **Problem**: Manage TUI rendering while forwarding child output in real-time
 **Solution**:
@@ -340,8 +373,13 @@ forwarding) **Solution**:
 2. Process that exits immediately
 3. Process that prints continuously
 4. Process that ignores SIGTERM
-5. Rapid restart requests
+5. Rapid restart requests (with and without debouncing)
 6. Signal handling while process is restarting
+7. Restart debouncing behavior:
+   - Mash restart hotkey rapidly (should see debounce messages)
+   - Send multiple restart signals quickly (should ignore extras)
+   - Test with --restart-debounce-ms 0 (all restarts allowed)
+   - Test with --restart-debounce-ms 3000 (3 second window)
 
 ## Distribution Targets
 
