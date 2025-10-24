@@ -211,18 +211,46 @@ testing.
 
 ### Status
 
-**NOT STARTED**
+**IN PROGRESS**
 
-Implementing additional features and polish.
+Implementing colored logging and additional features.
+
+### What's Being Implemented
+
+**Colored Logging for Supervisor Messages:**
+
+- Add `--log-color` CLI flag (default: yellow)
+- Supported colors: yellow, red, green, blue, cyan, magenta, white, none
+- Use crossterm's `SetForegroundColor` (already in dependencies)
+- Colorize `[supi]` prefix in all supervisor logs
+- Keep child process output uncolored (passthrough)
+
+**Implementation Details:**
+
+- Update `src/cli.rs`: Add log_color field with clap value_parser
+- Update `src/output.rs`: Add colored print functions with crossterm
+- Update `src/supervisor.rs`: Pass color config to output functions
+- Update `src/main.rs`: Wire color config through to supervisor
+
+**Technical Approach:**
+
+- Use crossterm's `SetForegroundColor` and `ResetColor`
+- Create color enum to map CLI strings to crossterm::Color
+- New functions: `print_line_colored()` and `eprint_line_colored()`
+- Maintain backward compatibility with existing print functions
 
 ### Planned Items
 
+- [ ] Add colored logging for supervisor messages
 - [ ] Add restart debouncing (prevent rapid restarts)
 - [ ] Improve error messages and logging
 - [ ] Add process restart counter/statistics
 
 ### Tests To Add
 
+- ❌ `test_log_color_flag` - Test color flag parsing
+- ❌ `test_colored_output` - Verify colored output (via PTY)
+- ❌ `test_no_color_option` - Verify --log-color=none works
 - ❌ `test_rapid_restarts_debounce` - Restart debouncing
 - ❌ `test_process_restart_after_exit` - Restart after child exits
 
