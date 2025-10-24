@@ -1,3 +1,28 @@
-fn main() {
-    println!("Hello, world!");
+mod cli;
+mod hotkey;
+mod process;
+mod signals;
+mod supervisor;
+
+use clap::Parser;
+use cli::Cli;
+use process::ProcessManager;
+use supervisor::Supervisor;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let args = Cli::parse();
+
+    println!("Starting supervisor for: {} {:?}", args.command, args.args);
+    println!(
+        "Config: restart_signal={}, restart_hotkey={}, stop_on_child_exit={}",
+        args.restart_signal, args.restart_hotkey, args.stop_on_child_exit
+    );
+
+    let process_manager = ProcessManager::new(args.command, args.args);
+    let mut supervisor = Supervisor::new(process_manager, args.stop_on_child_exit);
+
+    supervisor.run().await?;
+
+    Ok(())
 }

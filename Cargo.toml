@@ -10,3 +10,10 @@
     categories  = ["command-line-utilities", "development-tools"]
 
 [dependencies]
+    clap              = { version = "4.5", features = ["derive"] }
+    tokio             = { version = "1.40", features = ["full"] }
+    tokio-util        = { version = "0.7", features = ["io"] }
+    crossterm         = "0.28"
+    anyhow            = "1.0"
+    signal-hook       = "0.3"
+    signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
