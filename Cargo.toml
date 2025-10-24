@@ -1,6 +1,12 @@
 [package]
-name = "supi-cli"
-version = "0.1.0"
-edition = "2024"
+    name        = "supi-cli"
+    version     = "0.1.0"
+    edition     = "2024"
+    license     = "MIT OR Apache-2.0"
+    authors     = ["bjesuiter"]
+    description = "A simple process supervisor for spawning and managing arbitrary commands"
+    repository  = "https://github.com/bjesuiter/supi-cli"
+    keywords    = ["supervisor", "process", "cli", "restart", "development"]
+    categories  = ["command-line-utilities", "development-tools"]
 
 [dependencies]
