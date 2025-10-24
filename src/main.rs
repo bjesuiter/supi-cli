@@ -28,17 +28,11 @@ async fn main() -> anyhow::Result<()> {
     let process_manager = ProcessManager::new(args.command, args.args);
     let signal_handler = SignalHandler::new(&args.restart_signal)?;
 
-    // Set up hotkey listener
+    // Set up hotkey listener (raw mode will be enabled in supervisorafter command validation)
     let hotkey_listener = match HotkeyListener::new(args.restart_hotkey) {
-        Ok(listener) => {
-            sprintln!(
-                "[supi] Hotkey listener active: press '{}' to restart",
-                args.restart_hotkey
-            );
-            Some(listener)
-        }
+        Ok(listener) => Some(listener),
         Err(e) => {
-            seprintln!("[supi] Warning: Could not enable hotkey listener: {}", e);
+            seprintln!("[supi] Warning: Could not set up hotkey listener: {}", e);
             seprintln!("[supi] Continuing without hotkey support (signals still work)");
             None
         }

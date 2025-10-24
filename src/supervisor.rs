@@ -30,6 +30,16 @@ impl Supervisor {
         // Spawn initial process
         self.process_manager.spawn().await?;
 
+        // Only enable raw mode after successfully spawning the process
+        // This prevents raw mode from being activated when the command doesn't exist
+        if let Some(ref mut listener) = self.hotkey_listener {
+            listener.enable_raw_mode()?;
+            sprintln!(
+                "[supi] Hotkey listener active: press '{}' to restart",
+                listener.hotkey()
+            );
+        }
+
         loop {
             tokio::select! {
                 // Handle signals

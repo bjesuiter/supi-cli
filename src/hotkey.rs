@@ -14,8 +14,9 @@ pub struct HotkeyPressed;
 
 /// Manages terminal input and detects hotkey presses
 pub struct HotkeyListener {
+    hotkey: char,
     receiver: mpsc::UnboundedReceiver<HotkeyPressed>,
-    _cleanup: TerminalCleanup,
+    _cleanup: Option<TerminalCleanup>,
 }
 
 /// RAII guard that ensures terminal raw mode is disabled on drop
@@ -29,10 +30,9 @@ impl Drop for TerminalCleanup {
 
 impl HotkeyListener {
     /// Create a new hotkey listener that monitors for the specified key press
+    /// Note: This does not enable raw mode yet. Call `enable_raw_mode()` after
+    /// validating that the command exists.
     pub fn new(hotkey: char) -> Result<Self> {
-        // Enable raw mode to capture individual keystrokes
-        enable_raw_mode()?;
-
         let (sender, receiver) = mpsc::unbounded_channel();
 
         // Spawn background task to read terminal events
@@ -75,9 +75,23 @@ impl HotkeyListener {
         });
 
         Ok(Self {
+            hotkey,
             receiver,
-            _cleanup: TerminalCleanup,
+            _cleanup: None,
         })
+    }
+
+    /// Enable raw mode for terminal input
+    /// Call this after validating that the command exists and can be spawned
+    pub fn enable_raw_mode(&mut self) -> Result<()> {
+        enable_raw_mode()?;
+        self._cleanup = Some(TerminalCleanup);
+        Ok(())
+    }
+
+    /// Get the configured hotkey character
+    pub fn hotkey(&self) -> char {
+        self.hotkey
     }
 
     /// Wait for the next hotkey press
