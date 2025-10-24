@@ -26,6 +26,14 @@
 ⏸️  src/hotkey.rs    - STUB
 ```
 
+### Tests Added (tests/cli_tests.rs)
+
+- ✅ `test_simple_echo` - Basic process spawning and output
+- ✅ `test_stop_on_child_exit_flag` - Verify --stop-on-child-exit behavior
+- ✅ `test_nonexistent_command` - Verify error on invalid command
+- ✅ `test_stdout_forwarding` - Multi-line stdout forwarding
+- ✅ `test_stderr_forwarding` - Stderr forwarding
+
 ### Next Action
 
 Implement signal handlers in `src/signals.rs`:
@@ -36,8 +44,6 @@ Implement signal handlers in `src/signals.rs`:
 4. Add SIGUSR1 (or custom) restart signal handler
 
 Update `src/supervisor.rs` to use tokio::select! for event loop.
-
-**Test with:** `bx dev-sleep` then Ctrl+C
 
 ---
 
@@ -53,40 +59,33 @@ Update `src/supervisor.rs` to use tokio::select! for event loop.
 - Compiles successfully
 - All functions stubbed with `anyhow::bail!("not implemented yet")`
 
+### Tests Added (tests/cli_tests.rs)
+
+- ✅ `test_help_flag` - Verify --help shows usage
+- ✅ `test_version_flag` - Verify --version shows version
+- ✅ `test_version_flag_short` - Verify -V shows version
+- ✅ `test_missing_command_fails` - Verify error when no command provided
+
 ---
 
-## Integration Tests Per Phase
+## Planned Integration Tests
 
-Run tests: `bx test` or `bx test -- test_name`
+Run tests: `bx test` or `bx test -- test_name`\
+**Current: 9 tests passing** (Phase 1 & 2 complete - see session logs above)
 
-### Phase 1 (CLI & Skeleton) - tests/cli_tests.rs
+**Phase 3 (Signal Handling):**
 
-- `test_help_flag` - Verify --help shows usage
-- `test_version_flag` - Verify --version shows version
-- `test_version_flag_short` - Verify -V shows version
-- `test_missing_command_fails` - Verify error when no command provided
+- ❌ `test_sigterm_graceful_shutdown` - SIGTERM handling
+- ❌ `test_sigint_graceful_shutdown` - SIGINT (Ctrl+C) handling
+- ❌ `test_restart_signal` - SIGUSR1 restart signal
+- ❌ `test_signal_forwarding_to_child` - Forward signals to child
 
-### Phase 2 (Basic Process Spawning) - tests/cli_tests.rs
+**Phase 4 (Interactive Hotkey):**
 
-- `test_simple_echo` - Basic process spawning and output
-- `test_stop_on_child_exit_flag` - Verify --stop-on-child-exit behavior
-- `test_nonexistent_command` - Verify error on invalid command
-- `test_stdout_forwarding` - Multi-line stdout forwarding
-- `test_stderr_forwarding` - Stderr forwarding
+- ❌ `test_hotkey_restart` - 'r' key restart trigger
+- ❌ `test_custom_hotkey` - Custom hotkey character
 
-### Phase 3 (Signal Handling) - TODO
+**Phase 5 (Advanced Features):**
 
-- `test_sigterm_graceful_shutdown` - SIGTERM handling
-- `test_sigint_graceful_shutdown` - SIGINT (Ctrl+C) handling
-- `test_restart_signal` - SIGUSR1 restart signal
-- `test_signal_forwarding_to_child` - Forward signals to child
-
-### Phase 4 (Interactive Hotkey) - TODO
-
-- `test_hotkey_restart` - 'r' key restart trigger
-- `test_custom_hotkey` - Custom hotkey character
-
-### Phase 5 (Advanced Features) - TODO
-
-- `test_rapid_restarts_debounce` - Restart debouncing
-- `test_custom_restart_signal` - Custom signal configuration
+- ❌ `test_rapid_restarts_debounce` - Restart debouncing
+- ❌ `test_custom_restart_signal` - Custom signal configuration
