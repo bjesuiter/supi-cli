@@ -56,6 +56,8 @@ async fn main() -> anyhow::Result<()> {
         signal_handler,
         hotkey_listener,
         args.stop_on_child_exit,
+        args.restart_signal,
+        args.restart_hotkey,
         log_color,
         info_color,
     );

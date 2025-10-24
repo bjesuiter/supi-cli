@@ -10,6 +10,8 @@ pub struct Supervisor {
     signal_handler: SignalHandler,
     hotkey_listener: Option<HotkeyListener>,
     stop_on_child_exit: bool,
+    restart_signal: String,
+    restart_hotkey: char,
     log_color: LogColor,
     info_color: LogColor,
 }
@@ -20,6 +22,8 @@ impl Supervisor {
         signal_handler: SignalHandler,
         hotkey_listener: Option<HotkeyListener>,
         stop_on_child_exit: bool,
+        restart_signal: String,
+        restart_hotkey: char,
         log_color: LogColor,
         info_color: LogColor,
     ) -> Self {
@@ -28,6 +32,8 @@ impl Supervisor {
             signal_handler,
             hotkey_listener,
             stop_on_child_exit,
+            restart_signal,
+            restart_hotkey,
             log_color,
             info_color,
         }
@@ -44,7 +50,7 @@ impl Supervisor {
             sprintln_colored!(
                 self.info_color,
                 "[supi] Hotkey listener active: press '{}' to restart",
-                listener.hotkey()
+                self.restart_hotkey
             );
         }
 
@@ -96,9 +102,10 @@ impl Supervisor {
                             } else {
                                 sprintln_colored!(self.log_color, "[supi] Child process exited, but supervisor continues running");
                                 if self.hotkey_listener.is_some() {
-                                    sprintln_colored!(self.info_color, "[supi] (Press Ctrl+C to exit, or press hotkey/send restart signal to restart)");
+                                    sprintln_colored!(self.info_color, "[supi] Press Ctrl+C to exit, press hotkey '{}' to restart, or send signal({}) to restart", self.restart_hotkey, self.restart_signal);
                                 } else {
-                                    sprintln_colored!(self.info_color, "[supi] (Press Ctrl+C to exit, or send restart signal to restart)");
+                                    sprintln_colored!(self.info_color, "[supi] Press Ctrl+C to exit, or send signal({}) to restart",
+                                    self.restart_signal);
                                 }
                                 // Continue loop, waiting for signals
                             }
