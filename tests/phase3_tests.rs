@@ -265,4 +265,3 @@ fn test_restart_with_stop_on_child_exit() {
     drop(output_bytes);
     let _ = reader_thread.join();
 }
-

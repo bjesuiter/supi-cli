@@ -188,4 +188,3 @@ fn test_pty_process_ignores_sigterm() {
     let _ = child.kill();
     let _ = child.wait();
 }
-

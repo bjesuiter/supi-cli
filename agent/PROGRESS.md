@@ -333,6 +333,7 @@ Final polish, documentation, and distribution setup.
 ### Test File Organization
 
 Tests are organized by phase into separate files for better maintainability:
+
 - `tests/test_utils.rs` - Shared PTY setup helper function
 - `tests/phase1_tests.rs` - CLI and basic process tests (9 tests)
 - `tests/phase2_tests.rs` - Signal handling tests (4 tests)

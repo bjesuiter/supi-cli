@@ -364,4 +364,3 @@ fn test_info_color_independent() {
     drop(output_bytes);
     let _ = reader_thread.join();
 }
-
