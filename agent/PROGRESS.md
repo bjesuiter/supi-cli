@@ -240,6 +240,13 @@ Colored logging feature COMPLETE. Ready for additional features.
   messages
 - `src/process.rs`: Use log_color for all process-related logs
 
+**✅ Configuration Display in Info Messages (COMPLETE):**
+
+- Store configured `restart_signal` and `restart_hotkey` on Supervisor struct
+- Info messages now display actual configured values:
+  - Shows configured hotkey character in "Press hotkey '{}' to restart" message
+  - Shows configured signal name in "send signal({}) to restart" message
+
 **Testing:**
 
 - All 22 existing tests pass
