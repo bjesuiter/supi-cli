@@ -1,13 +1,13 @@
 // Phase 5: Advanced Features
 // Tests for --silent flag and colored output
 
-mod test_utils;
+mod cli_test_utils;
 
 use assert_cmd::Command;
+use cli_test_utils::create_pty_with_reader;
 use portable_pty::CommandBuilder;
 use predicates::prelude::*;
 use std::time::Duration;
-use test_utils::create_pty_with_reader;
 
 // ============================================================================
 // Silent Flag Tests

@@ -1,12 +1,12 @@
 // Phase 3: Interactive Hotkey
 // Tests for hotkey-based restart functionality
 
-mod test_utils;
+mod cli_test_utils;
 
+use cli_test_utils::create_pty_with_reader;
 use portable_pty::CommandBuilder;
 use std::io::Write;
 use std::time::Duration;
-use test_utils::create_pty_with_reader;
 
 // Manual test: cargo run -- bash -c "echo 'started'; sleep 10"
 //              (then press 'r' in the terminal, should see process restart)

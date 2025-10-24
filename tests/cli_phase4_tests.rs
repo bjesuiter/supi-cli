@@ -1,12 +1,12 @@
 // Phase 4: PTY-Specific Scenarios
 // Tests for edge cases and realistic terminal scenarios
 
-mod test_utils;
+mod cli_test_utils;
 
+use cli_test_utils::create_pty_with_reader;
 use portable_pty::CommandBuilder;
 use std::io::Write;
 use std::time::Duration;
-use test_utils::create_pty_with_reader;
 
 // PTY Test 1: Long-running process with hotkey restart
 #[test]

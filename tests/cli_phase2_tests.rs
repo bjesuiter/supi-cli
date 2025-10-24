@@ -1,11 +1,11 @@
 // Phase 2: Signal Handling
 // Tests for termination signals (SIGINT, SIGTERM) and restart signal (SIGUSR1)
 
-mod test_utils;
+mod cli_test_utils;
 
+use cli_test_utils::create_pty_with_reader;
 use portable_pty::CommandBuilder;
 use std::time::Duration;
-use test_utils::create_pty_with_reader;
 
 // Manual test: cargo run -- sleep 30
 //              (note the PID shown, then in another terminal: kill -TERM <pid>)
