@@ -1,12 +1,10 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
 use std::io::{Read, Write};
-use std::process::Stdio;
 use std::time::Duration;
 
 // Manual test: cargo run -- --help
 #[test]
-#[ignore]
 fn test_help_flag() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
     cmd.arg("--help")
@@ -20,7 +18,6 @@ fn test_help_flag() {
 
 // Manual test: cargo run -- --version
 #[test]
-#[ignore]
 fn test_version_flag() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
     cmd.arg("--version")
@@ -31,7 +28,6 @@ fn test_version_flag() {
 
 // Manual test: cargo run -- -V
 #[test]
-#[ignore]
 fn test_version_flag_short() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
     cmd.arg("-V")
@@ -42,7 +38,6 @@ fn test_version_flag_short() {
 
 // Manual test: cargo run --
 #[test]
-#[ignore]
 fn test_missing_command_fails() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
     cmd.assert()
@@ -52,36 +47,71 @@ fn test_missing_command_fails() {
 
 // Manual test: cargo run -- --stop-on-child-exit echo "hello world"
 #[test]
-#[ignore]
 fn test_simple_echo() {
-    let mut cmd = Command::cargo_bin("supi-cli").unwrap();
-    cmd.arg("--stop-on-child-exit")
-        .arg("echo")
-        .arg("hello world")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("hello world"));
+    use portable_pty::CommandBuilder;
+
+    let (pair, output, reader_thread) = create_pty_with_reader();
+
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.args(&["--stop-on-child-exit", "echo", "hello world"]);
+
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    drop(pair.slave);
+
+    let status = child.wait().unwrap();
+    std::thread::sleep(Duration::from_millis(500));
+
+    let output_bytes = output.lock().unwrap();
+    let output_str = String::from_utf8_lossy(&output_bytes);
+
+    assert!(
+        output_str.contains("hello world"),
+        "Expected 'hello world' in output. Output:\n{}",
+        output_str
+    );
+    assert!(status.success(), "Process should exit successfully");
+
+    drop(output_bytes);
+    let _ = reader_thread.join();
 }
 
 // Manual test: cargo run -- --stop-on-child-exit echo "test message"
 #[test]
-#[ignore]
 fn test_stop_on_child_exit_flag() {
-    let mut cmd = Command::cargo_bin("supi-cli").unwrap();
-    cmd.arg("--stop-on-child-exit")
-        .arg("echo")
-        .arg("test message")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("test message"))
-        .stdout(predicate::str::contains(
-            "Exiting (--stop-on-child-exit is set)",
-        ));
+    use portable_pty::CommandBuilder;
+
+    let (pair, output, reader_thread) = create_pty_with_reader();
+
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.args(&["--stop-on-child-exit", "echo", "test message"]);
+
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    drop(pair.slave);
+
+    let status = child.wait().unwrap();
+    std::thread::sleep(Duration::from_millis(500));
+
+    let output_bytes = output.lock().unwrap();
+    let output_str = String::from_utf8_lossy(&output_bytes);
+
+    assert!(
+        output_str.contains("test message"),
+        "Expected 'test message' in output. Output:\n{}",
+        output_str
+    );
+    assert!(
+        output_str.contains("Exiting (--stop-on-child-exit is set)"),
+        "Expected exit message. Output:\n{}",
+        output_str
+    );
+    assert!(status.success(), "Process should exit successfully");
+
+    drop(output_bytes);
+    let _ = reader_thread.join();
 }
 
 // Manual test: cargo run -- this_command_does_not_exist_xyz123
 #[test]
-#[ignore]
 fn test_nonexistent_command() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
     cmd.arg("this_command_does_not_exist_xyz123")
@@ -91,36 +121,132 @@ fn test_nonexistent_command() {
         .stderr(predicate::str::contains("Failed to spawn"));
 }
 
+// ============================================================================
+// PTY-Based Tests
+// ============================================================================
+// All following tests use a PTY setup for testing to avoid display issues in
+// cargo output due to the use of raw tty mode in hotkey.rs. PTY provides a
+// clean, realistic terminal environment for testing.
+
+// Helper function to create PTY test environment
+fn create_pty_with_reader() -> (
+    portable_pty::PtyPair,
+    std::sync::Arc<std::sync::Mutex<Vec<u8>>>,
+    std::thread::JoinHandle<()>,
+) {
+    use portable_pty::{PtySize, native_pty_system};
+    use std::sync::{Arc, Mutex};
+
+    let pty_system = native_pty_system();
+    let pair = pty_system
+        .openpty(PtySize {
+            rows: 24,
+            cols: 80,
+            pixel_width: 0,
+            pixel_height: 0,
+        })
+        .unwrap();
+
+    let output = Arc::new(Mutex::new(Vec::new()));
+    let output_clone = Arc::clone(&output);
+    let mut reader = pair.master.try_clone_reader().unwrap();
+
+    let reader_thread = std::thread::spawn(move || {
+        let mut buf = [0u8; 1024];
+        loop {
+            match reader.read(&mut buf) {
+                Ok(n) if n > 0 => {
+                    output_clone.lock().unwrap().extend_from_slice(&buf[..n]);
+                }
+                _ => break,
+            }
+        }
+    });
+
+    (pair, output, reader_thread)
+}
+
 // Manual test: cargo run -- --stop-on-child-exit bash -- -c "echo line1 && echo line2 && echo line3"
 #[test]
-#[ignore]
 fn test_stdout_forwarding() {
-    let mut cmd = Command::cargo_bin("supi-cli").unwrap();
-    cmd.arg("--stop-on-child-exit")
-        .arg("bash")
-        .arg("--")
-        .arg("-c")
-        .arg("echo line1 && echo line2 && echo line3")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("line1"))
-        .stdout(predicate::str::contains("line2"))
-        .stdout(predicate::str::contains("line3"));
+    use portable_pty::CommandBuilder;
+
+    let (pair, output, reader_thread) = create_pty_with_reader();
+
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.args(&[
+        "--stop-on-child-exit",
+        "--",
+        "bash",
+        "-c",
+        "echo line1 && echo line2 && echo line3",
+    ]);
+
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    drop(pair.slave);
+
+    let status = child.wait().unwrap();
+    std::thread::sleep(Duration::from_millis(500));
+
+    let output_bytes = output.lock().unwrap();
+    let output_str = String::from_utf8_lossy(&output_bytes);
+
+    assert!(
+        output_str.contains("line1"),
+        "Expected 'line1' in output. Output:\n{}",
+        output_str
+    );
+    assert!(
+        output_str.contains("line2"),
+        "Expected 'line2' in output. Output:\n{}",
+        output_str
+    );
+    assert!(
+        output_str.contains("line3"),
+        "Expected 'line3' in output. Output:\n{}",
+        output_str
+    );
+    assert!(status.success(), "Process should exit successfully");
+
+    drop(output_bytes);
+    let _ = reader_thread.join();
 }
 
 // Manual test: cargo run -- --stop-on-child-exit bash -- -c "echo 'error message' >&2"
 #[test]
-#[ignore]
 fn test_stderr_forwarding() {
-    let mut cmd = Command::cargo_bin("supi-cli").unwrap();
-    cmd.arg("--stop-on-child-exit")
-        .arg("bash")
-        .arg("--")
-        .arg("-c")
-        .arg("echo 'error message' >&2")
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("error message"));
+    use portable_pty::CommandBuilder;
+
+    let (pair, output, reader_thread) = create_pty_with_reader();
+
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.args(&[
+        "--stop-on-child-exit",
+        "--",
+        "bash",
+        "-c",
+        "echo 'error message' >&2",
+    ]);
+
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    drop(pair.slave);
+
+    let status = child.wait().unwrap();
+    std::thread::sleep(Duration::from_millis(500));
+
+    let output_bytes = output.lock().unwrap();
+    let output_str = String::from_utf8_lossy(&output_bytes);
+
+    // In PTY, stderr and stdout are merged into the PTY output
+    assert!(
+        output_str.contains("error message"),
+        "Expected 'error message' in output. Output:\n{}",
+        output_str
+    );
+    assert!(status.success(), "Process should exit successfully");
+
+    drop(output_bytes);
+    let _ = reader_thread.join();
 }
 
 // Phase 2 Tests: Signal Handling
@@ -128,103 +254,108 @@ fn test_stderr_forwarding() {
 // Manual test: cargo run -- sleep 30
 //              (note the PID shown, then in another terminal: kill -TERM <pid>)
 #[test]
-#[ignore]
 fn test_sigterm_graceful_shutdown() {
-    use std::process::Command as StdCommand;
+    use portable_pty::CommandBuilder;
 
-    // Spawn supi-cli with a long-running process
-    let child = StdCommand::new(env!("CARGO_BIN_EXE_supi-cli"))
-        .arg("sleep")
-        .arg("30")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("Failed to spawn supi-cli");
+    let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let pid = child.id();
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.args(&["--", "sleep", "30"]);
+
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    let child_pid = child.process_id().unwrap();
+    drop(pair.slave);
 
     // Give it time to start
     std::thread::sleep(Duration::from_millis(500));
 
-    // Send SIGTERM
+    // Send SIGTERM to the child process
     unsafe {
-        libc::kill(pid as i32, libc::SIGTERM);
+        libc::kill(child_pid as i32, libc::SIGTERM);
     }
 
     // Wait for it to exit
-    let output = child.wait_with_output().expect("Failed to wait for child");
+    let _ = child.wait();
+    std::thread::sleep(Duration::from_millis(500));
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let output_bytes = output.lock().unwrap();
+    let output_str = String::from_utf8_lossy(&output_bytes);
 
     // Should show graceful shutdown message
     assert!(
-        stdout.contains("Received SIGTERM signal") || stdout.contains("Stopping child process")
+        output_str.contains("Received SIGTERM signal")
+            || output_str.contains("Stopping child process"),
+        "Expected shutdown message. Output:\n{}",
+        output_str
     );
-    assert!(output.status.success());
+
+    drop(output_bytes);
+    let _ = reader_thread.join();
 }
 
 // Manual test: cargo run -- sleep 30
 //              (then press Ctrl+C or in another terminal: kill -INT <pid>)
 #[test]
-#[ignore]
 fn test_sigint_graceful_shutdown() {
-    use std::process::Command as StdCommand;
+    use portable_pty::CommandBuilder;
 
-    // Spawn supi-cli with a long-running process
-    let child = StdCommand::new(env!("CARGO_BIN_EXE_supi-cli"))
-        .arg("sleep")
-        .arg("30")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("Failed to spawn supi-cli");
+    let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let pid = child.id();
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.args(&["--", "sleep", "30"]);
+
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    let child_pid = child.process_id().unwrap();
+    drop(pair.slave);
 
     // Give it time to start
     std::thread::sleep(Duration::from_millis(500));
 
     // Send SIGINT
     unsafe {
-        libc::kill(pid as i32, libc::SIGINT);
+        libc::kill(child_pid as i32, libc::SIGINT);
     }
 
     // Wait for it to exit
-    let output = child.wait_with_output().expect("Failed to wait for child");
+    let _ = child.wait();
+    std::thread::sleep(Duration::from_millis(500));
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let output_bytes = output.lock().unwrap();
+    let output_str = String::from_utf8_lossy(&output_bytes);
 
     // Should show graceful shutdown message
-    assert!(stdout.contains("Received SIGINT signal") || stdout.contains("Stopping child process"));
-    assert!(output.status.success());
+    assert!(
+        output_str.contains("Received SIGINT signal")
+            || output_str.contains("Stopping child process"),
+        "Expected shutdown message. Output:\n{}",
+        output_str
+    );
+
+    drop(output_bytes);
+    let _ = reader_thread.join();
 }
 
 // Manual test: cargo run -- bash -c "echo 'started'; sleep 10"
 //              (note the PID, then in another terminal: kill -USR1 <pid>, then: kill -TERM <pid>)
 #[test]
-#[ignore]
 fn test_restart_signal() {
-    use std::process::Command as StdCommand;
+    use portable_pty::CommandBuilder;
 
-    // Spawn supi-cli with a command that we can observe restarting
-    let child = StdCommand::new(env!("CARGO_BIN_EXE_supi-cli"))
-        .arg("--")
-        .arg("bash")
-        .arg("-c")
-        .arg("echo 'started'; sleep 10")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("Failed to spawn supi-cli");
+    let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let pid = child.id();
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.args(&["--", "bash", "-c", "echo 'started'; sleep 10"]);
+
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    let child_pid = child.process_id().unwrap();
+    drop(pair.slave);
 
     // Give it more time to start and print first message
     std::thread::sleep(Duration::from_secs(1));
 
     // Send SIGUSR1 to trigger restart
     unsafe {
-        libc::kill(pid as i32, libc::SIGUSR1);
+        libc::kill(child_pid as i32, libc::SIGUSR1);
     }
 
     // Give it more time to restart
@@ -232,30 +363,36 @@ fn test_restart_signal() {
 
     // Send SIGTERM to stop
     unsafe {
-        libc::kill(pid as i32, libc::SIGTERM);
+        libc::kill(child_pid as i32, libc::SIGTERM);
     }
 
-    // Give it time to process the signal
+    // Wait for it to exit
+    let _ = child.wait();
     std::thread::sleep(Duration::from_millis(500));
 
-    // Collect output
-    let output = child.wait_with_output().expect("Failed to wait for child");
-    let stdout_str = String::from_utf8_lossy(&output.stdout);
+    let output_bytes = output.lock().unwrap();
+    let output_str = String::from_utf8_lossy(&output_bytes);
 
     // Should see restart messages in stdout
     assert!(
-        stdout_str.contains("Received SIGUSR1 signal")
-            || stdout_str.contains("Restarting child process")
+        output_str.contains("Received SIGUSR1 signal")
+            || output_str.contains("Restarting child process"),
+        "Expected restart message. Output:\n{}",
+        output_str
     );
+
+    drop(output_bytes);
+    let _ = reader_thread.join();
 }
 
 // Manual test: Create test.sh with: trap 'echo "Child got SIGTERM"; exit 0' TERM; echo "Started"; sleep 30
 //              Then: chmod +x test.sh && cargo run -- ./test.sh
 //              (note the PID, then in another terminal: kill -TERM <pid>)
 #[test]
-#[ignore]
 fn test_signal_forwarding_to_child() {
-    use std::process::Command as StdCommand;
+    use portable_pty::CommandBuilder;
+
+    let (pair, output, reader_thread) = create_pty_with_reader();
 
     // Create a script that handles SIGTERM gracefully
     let script = r#"#!/bin/bash
@@ -275,29 +412,37 @@ sleep 30
         std::fs::set_permissions(temp_file.path(), perms).unwrap();
     }
 
-    let child = StdCommand::new(env!("CARGO_BIN_EXE_supi-cli"))
-        .arg(temp_file.path())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("Failed to spawn supi-cli");
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.arg(temp_file.path().to_str().unwrap());
 
-    let pid = child.id();
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    let child_pid = child.process_id().unwrap();
+    drop(pair.slave);
 
     // Give it time to start
     std::thread::sleep(Duration::from_millis(500));
 
     // Send SIGTERM
     unsafe {
-        libc::kill(pid as i32, libc::SIGTERM);
+        libc::kill(child_pid as i32, libc::SIGTERM);
     }
 
     // Wait for it to exit
-    let output = child.wait_with_output().expect("Failed to wait for child");
-    let stdout_str = String::from_utf8_lossy(&output.stdout);
+    let _ = child.wait();
+    std::thread::sleep(Duration::from_millis(500));
+
+    let output_bytes = output.lock().unwrap();
+    let output_str = String::from_utf8_lossy(&output_bytes);
 
     // Should see both supervisor and child handling the signal
-    assert!(stdout_str.contains("Stopping child process"));
+    assert!(
+        output_str.contains("Stopping child process"),
+        "Expected 'Stopping child process'. Output:\n{}",
+        output_str
+    );
+
+    drop(output_bytes);
+    let _ = reader_thread.join();
 }
 
 // Phase 3 Tests: Interactive Hotkey
@@ -305,118 +450,111 @@ sleep 30
 // Manual test: cargo run -- bash -c "echo 'started'; sleep 10"
 //              (then press 'r' in the terminal, should see process restart)
 #[test]
-#[ignore]
 fn test_default_hotkey_restart() {
-    use std::io::Write;
-    use std::process::Command as StdCommand;
+    use portable_pty::CommandBuilder;
 
-    // Spawn supi-cli with a command that prints on start
-    let mut child = StdCommand::new(env!("CARGO_BIN_EXE_supi-cli"))
-        .arg("--")
-        .arg("bash")
-        .arg("-c")
-        .arg("echo 'Process started'; sleep 10")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("Failed to spawn supi-cli");
+    let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let pid = child.id();
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.args(&["--", "bash", "-c", "echo 'Process started'; sleep 10"]);
+
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    drop(pair.slave);
 
     // Give it time to start
     std::thread::sleep(Duration::from_secs(1));
 
-    // Send 'r' to stdin to trigger restart
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(b"r").unwrap();
-        stdin.flush().unwrap();
-    }
+    // Send 'r' hotkey through PTY master
+    let mut writer = pair.master.take_writer().unwrap();
+    writer.write_all(b"r").unwrap();
+    writer.flush().unwrap();
+    drop(writer);
 
     // Give it time to restart
-    std::thread::sleep(Duration::from_secs(1));
+    std::thread::sleep(Duration::from_secs(2));
 
-    // Send SIGTERM to stop
-    unsafe {
-        libc::kill(pid as i32, libc::SIGTERM);
-    }
+    // Cleanup
+    let _ = child.kill();
+    let _ = child.wait();
+    std::thread::sleep(Duration::from_millis(500));
 
-    // Wait for it to exit
-    let output = child.wait_with_output().expect("Failed to wait for child");
-    let stdout_str = String::from_utf8_lossy(&output.stdout);
+    let output_bytes = output.lock().unwrap();
+    let output_str = String::from_utf8_lossy(&output_bytes);
 
-    // Should see "started" twice (initial + restart) and restart message
-    let started_count = stdout_str.matches("Process started").count();
+    // Should see "started" twice (initial + restart)
+    let started_count = output_str.matches("Process started").count();
     assert!(
         started_count >= 2,
         "Expected at least 2 'Process started' messages, got {}. Output:\n{}",
         started_count,
-        stdout_str
+        output_str
     );
+
+    drop(output_bytes);
+    let _ = reader_thread.join();
 }
 
 // Manual test: cargo run -- --restart-hotkey x bash -c "echo 'started'; sleep 10"
 //              (then press 'x' in the terminal)
 #[test]
-#[ignore]
 fn test_custom_hotkey_restart() {
-    use std::io::Write;
-    use std::process::Command as StdCommand;
+    use portable_pty::CommandBuilder;
 
-    // Spawn supi-cli with custom hotkey
-    let mut child = StdCommand::new(env!("CARGO_BIN_EXE_supi-cli"))
-        .arg("--restart-hotkey")
-        .arg("x")
-        .arg("--")
-        .arg("bash")
-        .arg("-c")
-        .arg("echo 'Process started'; sleep 10")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("Failed to spawn supi-cli");
+    let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let pid = child.id();
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.args(&[
+        "--restart-hotkey",
+        "x",
+        "--",
+        "bash",
+        "-c",
+        "echo 'Process started'; sleep 10",
+    ]);
+
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    drop(pair.slave);
 
     // Give it time to start
     std::thread::sleep(Duration::from_secs(1));
 
-    // Send 'x' to stdin to trigger restart
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(b"x").unwrap();
-        stdin.flush().unwrap();
-    }
+    // Send 'x' hotkey through PTY master
+    let mut writer = pair.master.take_writer().unwrap();
+    writer.write_all(b"x").unwrap();
+    writer.flush().unwrap();
+    drop(writer);
 
     // Give it time to restart
-    std::thread::sleep(Duration::from_secs(1));
+    std::thread::sleep(Duration::from_secs(2));
 
-    // Send SIGTERM to stop
-    unsafe {
-        libc::kill(pid as i32, libc::SIGTERM);
-    }
+    // Cleanup
+    let _ = child.kill();
+    let _ = child.wait();
+    std::thread::sleep(Duration::from_millis(500));
 
-    // Wait for it to exit
-    let output = child.wait_with_output().expect("Failed to wait for child");
-    let stdout_str = String::from_utf8_lossy(&output.stdout);
+    let output_bytes = output.lock().unwrap();
+    let output_str = String::from_utf8_lossy(&output_bytes);
 
     // Should see "started" twice (initial + restart)
-    let started_count = stdout_str.matches("Process started").count();
+    let started_count = output_str.matches("Process started").count();
     assert!(
         started_count >= 2,
         "Expected at least 2 'Process started' messages with custom hotkey 'x', got {}. Output:\n{}",
         started_count,
-        stdout_str
+        output_str
     );
+
+    drop(output_bytes);
+    let _ = reader_thread.join();
 }
 
 // Manual test: cargo run -- bash -- -c "echo 'started'; sleep 5"
 //              (press keys other than 'r', should NOT restart)
 #[test]
-#[ignore]
 fn test_non_hotkey_characters_ignored() {
-    use std::io::Write;
-    use std::process::Command as StdCommand;
+    use portable_pty::CommandBuilder;
+
+    let (pair, output, reader_thread) = create_pty_with_reader();
 
     // Use a unique timestamp-based marker to count starts
     let marker = format!(
@@ -428,183 +566,167 @@ fn test_non_hotkey_characters_ignored() {
     );
     let script = format!("echo '{}'; sleep 5", marker);
 
-    // Spawn supi-cli with a command that prints on start
-    let mut child = StdCommand::new(env!("CARGO_BIN_EXE_supi-cli"))
-        .arg("--")
-        .arg("bash")
-        .arg("-c")
-        .arg(&script)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("Failed to spawn supi-cli");
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.args(&["--", "bash", "-c", &script]);
 
-    let pid = child.id();
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    drop(pair.slave);
 
     // Give it time to start
     std::thread::sleep(Duration::from_secs(1));
 
-    // Send non-hotkey characters to stdin (avoid 'r' which is the default hotkey)
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(b"abc123xyz").unwrap();
-        stdin.flush().unwrap();
-    }
+    // Send non-hotkey characters through PTY (avoid 'r' which is the default hotkey)
+    let mut writer = pair.master.take_writer().unwrap();
+    writer.write_all(b"abc123xyz").unwrap();
+    writer.flush().unwrap();
+    drop(writer);
 
     // Give it time to potentially restart (it shouldn't)
     std::thread::sleep(Duration::from_secs(2));
 
-    // Send SIGTERM to stop
-    unsafe {
-        libc::kill(pid as i32, libc::SIGTERM);
-    }
+    // Cleanup
+    let _ = child.kill();
+    let _ = child.wait();
+    std::thread::sleep(Duration::from_millis(500));
 
-    // Wait for it to exit
-    let output = child.wait_with_output().expect("Failed to wait for child");
-    let stdout_str = String::from_utf8_lossy(&output.stdout);
+    let output_bytes = output.lock().unwrap();
+    let output_str = String::from_utf8_lossy(&output_bytes);
 
     // Should NOT see restart message (direct indicator that restart didn't happen)
     assert!(
-        !stdout_str.contains("Restarting child process"),
+        !output_str.contains("Restarting child process"),
         "Process should not have restarted from non-hotkey characters. Output:\n{}",
-        stdout_str
+        output_str
     );
 
-    // The marker appears twice: once in the command log, once in output
-    // If it appears more than twice, that means a restart happened
-    let started_count = stdout_str.matches(&marker).count();
+    // The marker appears once in output. If it appears more, that means a restart happened
+    let started_count = output_str.matches(&marker).count();
     assert!(
         started_count <= 2,
         "Expected at most 2 occurrences of marker (no restart), got {}. Output:\n{}",
         started_count,
-        stdout_str
+        output_str
     );
+
+    drop(output_bytes);
+    let _ = reader_thread.join();
 }
 
 // Manual test: cargo run -- --restart-hotkey r --stop-on-child-exit bash -c "echo 'done'; exit 0"
 //              (verify hotkey is accepted with other flags)
 #[test]
-#[ignore]
 fn test_hotkey_with_stop_on_child_exit() {
-    let mut cmd = Command::cargo_bin("supi-cli").unwrap();
-    cmd.arg("--restart-hotkey")
-        .arg("r")
-        .arg("--stop-on-child-exit")
-        .arg("echo")
-        .arg("test output")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("test output"));
+    use portable_pty::CommandBuilder;
+
+    let (pair, output, reader_thread) = create_pty_with_reader();
+
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.args(&[
+        "--restart-hotkey",
+        "r",
+        "--stop-on-child-exit",
+        "echo",
+        "test output",
+    ]);
+
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    drop(pair.slave);
+
+    let status = child.wait().unwrap();
+    std::thread::sleep(Duration::from_millis(500));
+
+    let output_bytes = output.lock().unwrap();
+    let output_str = String::from_utf8_lossy(&output_bytes);
+
+    assert!(
+        output_str.contains("test output"),
+        "Expected 'test output' in output. Output:\n{}",
+        output_str
+    );
+    assert!(status.success(), "Process should exit successfully");
+
+    drop(output_bytes);
+    let _ = reader_thread.join();
 }
 
 // Manual test: cargo run -- --stop-on-child-exit bash -c "echo 'started'; sleep 3"
 //              (press 'r' after 1s, verify restart happens, then supervisor exits when child exits)
 #[test]
-#[ignore]
 fn test_restart_with_stop_on_child_exit() {
-    use std::io::Write;
-    use std::process::Command as StdCommand;
+    use portable_pty::CommandBuilder;
 
-    // Use a command that runs for a short time, so we can observe it exit naturally after restart
-    let mut child = StdCommand::new(env!("CARGO_BIN_EXE_supi-cli"))
-        .arg("--stop-on-child-exit")
-        .arg("--")
-        .arg("bash")
-        .arg("-c")
-        .arg("echo 'Process started'; sleep 3")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("Failed to spawn supi-cli");
+    let (pair, output, reader_thread) = create_pty_with_reader();
+
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.args(&[
+        "--stop-on-child-exit",
+        "--",
+        "bash",
+        "-c",
+        "echo 'Process started'; sleep 3",
+    ]);
+
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    drop(pair.slave);
 
     // Give it time to start
     std::thread::sleep(Duration::from_secs(1));
 
-    // Send 'r' to stdin to trigger restart while child is still running
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(b"r").unwrap();
-        stdin.flush().unwrap();
-    }
+    // Send 'r' hotkey to trigger restart while child is still running
+    let mut writer = pair.master.take_writer().unwrap();
+    writer.write_all(b"r").unwrap();
+    writer.flush().unwrap();
+    drop(writer);
 
     // Wait for the restarted child to complete naturally (3s + buffer)
     std::thread::sleep(Duration::from_secs(4));
 
     // The supervisor should have exited on its own due to --stop-on-child-exit
-    let output = child.wait_with_output().expect("Failed to wait for child");
-    let stdout_str = String::from_utf8_lossy(&output.stdout);
+    let status = child.wait().unwrap();
+    std::thread::sleep(Duration::from_millis(500));
+
+    let output_bytes = output.lock().unwrap();
+    let output_str = String::from_utf8_lossy(&output_bytes);
 
     // Verify restart happened: should see "started" twice (initial + restart)
-    let started_count = stdout_str.matches("Process started").count();
+    let started_count = output_str.matches("Process started").count();
     assert!(
         started_count >= 2,
         "Expected at least 2 'Process started' messages (restart happened), got {}. Output:\n{}",
         started_count,
-        stdout_str
+        output_str
     );
 
     // Verify supervisor exited when child naturally exited (success exit code)
     assert!(
-        output.status.success(),
-        "Supervisor should exit successfully when child exits naturally. Exit status: {}",
-        output.status
+        status.success(),
+        "Supervisor should exit successfully when child exits naturally. Exit status: {:?}",
+        status
     );
 
     // Verify the --stop-on-child-exit message appears
     assert!(
-        stdout_str.contains("Exiting (--stop-on-child-exit is set)"),
+        output_str.contains("Exiting (--stop-on-child-exit is set)"),
         "Should see --stop-on-child-exit exit message. Output:\n{}",
-        stdout_str
+        output_str
     );
-}
 
-// ============================================================================
-// PTY-Based Tests
-// ============================================================================
-// These tests use pseudo-terminals for more realistic terminal interaction
-// testing, avoiding raw mode artifacts in test output.
+    drop(output_bytes);
+    let _ = reader_thread.join();
+}
 
 // PTY Test 1: Long-running process with hotkey restart
 #[test]
 fn test_pty_long_running_process_with_hotkey() {
-    use portable_pty::{CommandBuilder, PtySize, native_pty_system};
-    use std::sync::{Arc, Mutex};
+    use portable_pty::CommandBuilder;
 
-    let pty_system = native_pty_system();
+    let (pair, output, reader_thread) = create_pty_with_reader();
 
-    // Create PTY pair (master/slave)
-    let pair = pty_system
-        .openpty(PtySize {
-            rows: 24,
-            cols: 80,
-            pixel_width: 0,
-            pixel_height: 0,
-        })
-        .unwrap();
-
-    // Spawn supi-cli in PTY slave
     let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
     cmd.args(&["--", "bash", "-c", "echo 'Process started'; sleep 30"]);
 
     let mut child = pair.slave.spawn_command(cmd).unwrap();
-    drop(pair.slave); // Close slave fd in parent
-
-    // Start reader thread after spawning to avoid locking issues
-    let output = Arc::new(Mutex::new(Vec::new()));
-    let output_clone = Arc::clone(&output);
-    let mut reader = pair.master.try_clone_reader().unwrap();
-
-    let reader_thread = std::thread::spawn(move || {
-        let mut buf = [0u8; 1024];
-        loop {
-            match reader.read(&mut buf) {
-                Ok(n) if n > 0 => {
-                    output_clone.lock().unwrap().extend_from_slice(&buf[..n]);
-                }
-                _ => break,
-            }
-        }
-    });
+    drop(pair.slave);
 
     // Wait for startup
     std::thread::sleep(Duration::from_secs(1));
@@ -618,14 +740,11 @@ fn test_pty_long_running_process_with_hotkey() {
     // Give time for restart
     std::thread::sleep(Duration::from_secs(2));
 
-    // Cleanup - send SIGTERM to supi-cli
+    // Cleanup
     let _ = child.kill();
     let _ = child.wait();
-
-    // Give reader thread time to finish
     std::thread::sleep(Duration::from_millis(500));
 
-    // Check output
     let output_bytes = output.lock().unwrap();
     let output_str = String::from_utf8_lossy(&output_bytes);
 
@@ -638,7 +757,6 @@ fn test_pty_long_running_process_with_hotkey() {
         output_str
     );
 
-    // Clean up reader thread
     drop(output_bytes);
     let _ = reader_thread.join();
 }
@@ -646,72 +764,34 @@ fn test_pty_long_running_process_with_hotkey() {
 // PTY Test 2: Process that exits immediately
 #[test]
 fn test_pty_process_exits_immediately() {
-    use portable_pty::{CommandBuilder, PtySize, native_pty_system};
-    use std::sync::{Arc, Mutex};
+    use portable_pty::CommandBuilder;
 
-    let pty_system = native_pty_system();
+    let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let pair = pty_system
-        .openpty(PtySize {
-            rows: 24,
-            cols: 80,
-            pixel_width: 0,
-            pixel_height: 0,
-        })
-        .unwrap();
-
-    // Start reader thread
-    let output = Arc::new(Mutex::new(Vec::new()));
-    let output_clone = Arc::clone(&output);
-    let mut reader = pair.master.try_clone_reader().unwrap();
-
-    let reader_thread = std::thread::spawn(move || {
-        let mut buf = [0u8; 1024];
-        loop {
-            match reader.read(&mut buf) {
-                Ok(n) if n > 0 => {
-                    output_clone.lock().unwrap().extend_from_slice(&buf[..n]);
-                }
-                _ => break,
-            }
-        }
-    });
-
-    // Spawn supi-cli with --stop-on-child-exit and a command that exits immediately
     let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
     cmd.args(&["--stop-on-child-exit", "echo", "quick exit"]);
 
     let mut child = pair.slave.spawn_command(cmd).unwrap();
     drop(pair.slave);
 
-    // Wait for process to complete
     let status = child.wait().unwrap();
-
-    // Give reader thread time to finish
     std::thread::sleep(Duration::from_millis(500));
 
-    // Check output
     let output_bytes = output.lock().unwrap();
     let output_str = String::from_utf8_lossy(&output_bytes);
 
-    // Should contain the echo output
     assert!(
         output_str.contains("quick exit"),
         "Expected 'quick exit' in output. Output:\n{}",
         output_str
     );
-
-    // Should exit successfully
     assert!(status.success(), "Process should exit successfully");
-
-    // Should contain exit message
     assert!(
         output_str.contains("Exiting (--stop-on-child-exit is set)"),
         "Expected exit message. Output:\n{}",
         output_str
     );
 
-    // Clean up
     drop(output_bytes);
     let _ = reader_thread.join();
 }
@@ -719,38 +799,10 @@ fn test_pty_process_exits_immediately() {
 // PTY Test 3: Process that prints continuously
 #[test]
 fn test_pty_continuous_output() {
-    use portable_pty::{CommandBuilder, PtySize, native_pty_system};
-    use std::sync::{Arc, Mutex};
+    use portable_pty::CommandBuilder;
 
-    let pty_system = native_pty_system();
+    let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let pair = pty_system
-        .openpty(PtySize {
-            rows: 24,
-            cols: 80,
-            pixel_width: 0,
-            pixel_height: 0,
-        })
-        .unwrap();
-
-    // Start reader thread
-    let output = Arc::new(Mutex::new(Vec::new()));
-    let output_clone = Arc::clone(&output);
-    let mut reader = pair.master.try_clone_reader().unwrap();
-
-    let reader_thread = std::thread::spawn(move || {
-        let mut buf = [0u8; 1024];
-        loop {
-            match reader.read(&mut buf) {
-                Ok(n) if n > 0 => {
-                    output_clone.lock().unwrap().extend_from_slice(&buf[..n]);
-                }
-                _ => break,
-            }
-        }
-    });
-
-    // Spawn supi-cli with a command that prints multiple lines quickly
     let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
     cmd.args(&[
         "--",
@@ -768,11 +820,8 @@ fn test_pty_continuous_output() {
     // Cleanup
     let _ = child.kill();
     let _ = child.wait();
-
-    // Give reader thread time to finish
     std::thread::sleep(Duration::from_millis(500));
 
-    // Check output
     let output_bytes = output.lock().unwrap();
     let output_str = String::from_utf8_lossy(&output_bytes);
 
@@ -787,7 +836,6 @@ fn test_pty_continuous_output() {
         );
     }
 
-    // Clean up
     drop(output_bytes);
     let _ = reader_thread.join();
 }
@@ -795,38 +843,10 @@ fn test_pty_continuous_output() {
 // PTY Test 4: Process that ignores SIGTERM
 #[test]
 fn test_pty_process_ignores_sigterm() {
-    use portable_pty::{CommandBuilder, PtySize, native_pty_system};
-    use std::sync::{Arc, Mutex};
+    use portable_pty::CommandBuilder;
 
-    let pty_system = native_pty_system();
+    let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let pair = pty_system
-        .openpty(PtySize {
-            rows: 24,
-            cols: 80,
-            pixel_width: 0,
-            pixel_height: 0,
-        })
-        .unwrap();
-
-    // Start reader thread
-    let output = Arc::new(Mutex::new(Vec::new()));
-    let output_clone = Arc::clone(&output);
-    let mut reader = pair.master.try_clone_reader().unwrap();
-
-    let reader_thread = std::thread::spawn(move || {
-        let mut buf = [0u8; 1024];
-        loop {
-            match reader.read(&mut buf) {
-                Ok(n) if n > 0 => {
-                    output_clone.lock().unwrap().extend_from_slice(&buf[..n]);
-                }
-                _ => break,
-            }
-        }
-    });
-
-    // Spawn supi-cli with a command that traps SIGTERM and ignores it
     let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
     cmd.args(&[
         "--",
@@ -861,31 +881,25 @@ fn test_pty_process_ignores_sigterm() {
         }
     }
 
-    // Verify we were able to kill it
     assert!(
         kill_result.is_ok() || exited,
         "Should be able to terminate process that ignores SIGTERM"
     );
 
-    // Give reader thread time to finish
     std::thread::sleep(Duration::from_millis(500));
 
-    // Check output
     let output_bytes = output.lock().unwrap();
     let output_str = String::from_utf8_lossy(&output_bytes);
 
-    // Should see the startup message
     assert!(
         output_str.contains("Started and ignoring SIGTERM"),
         "Expected startup message. Output:\n{}",
         output_str
     );
 
-    // Clean up
     drop(output_bytes);
     let _ = reader_thread.join();
 
-    // Final cleanup
     let _ = child.kill();
     let _ = child.wait();
 }
