@@ -294,9 +294,11 @@ Ready for additional features.
   visible with --silent
 - ✅ `test_without_silent_flag_shows_supervisor_output` - Verify default
   behavior
-- ⚠️ `test_log_color_flag` - Color flag parsing (manual testing done)
-- ⚠️ `test_colored_output` - Colored output (manual testing done)
-- ⚠️ `test_no_color_option` - --log-color=none (manual testing done)
+- ✅ `test_log_color_flag` - Color flag parsing (all valid colors tested)
+- ✅ `test_colored_output` - Colored output contains ANSI escape codes
+- ✅ `test_no_color_option` - --log-color=none produces no color codes
+- ✅ `test_different_colors_produce_different_codes` - Verify color variations
+- ✅ `test_info_color_independent` - Info-color works independently
 - ❌ `test_rapid_restarts_debounce` - Restart debouncing
 - ❌ `test_process_restart_after_exit` - Restart after child exits
 
@@ -326,7 +328,7 @@ Final polish, documentation, and distribution setup.
 
 **Run tests**: `bx test` or `bx test -- test_name`
 
-**Current: 25 tests passing** (Phases 1, 2, 3, 4, & 5 features complete)
+**Current: 30 tests passing** (Phases 1, 2, 3, 4, & 5 features complete)
 
 ### Test Breakdown
 
@@ -334,7 +336,7 @@ Final polish, documentation, and distribution setup.
 - Phase 2: 4 tests (Signals)
 - Phase 3: 5 tests (Hotkeys)
 - Phase 4: 4 tests (PTY-specific scenarios)
-- Phase 5: 3 tests (--silent flag)
+- Phase 5: 8 tests (--silent flag + Color output)
 - **All tests now use PTY for clean output**
 
 ### All Tests
