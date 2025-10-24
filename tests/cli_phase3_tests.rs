@@ -14,7 +14,7 @@ use std::time::Duration;
 fn test_default_hotkey_restart() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&["--", "bash", "-c", "echo 'Process started'; sleep 10"]);
 
     let mut child = pair.slave.spawn_command(cmd).unwrap();
@@ -59,7 +59,7 @@ fn test_default_hotkey_restart() {
 fn test_custom_hotkey_restart() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&[
         "--restart-hotkey",
         "x",
@@ -121,7 +121,7 @@ fn test_non_hotkey_characters_ignored() {
     );
     let script = format!("echo '{}'; sleep 5", marker);
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&["--", "bash", "-c", &script]);
 
     let mut child = pair.slave.spawn_command(cmd).unwrap();
@@ -173,7 +173,7 @@ fn test_non_hotkey_characters_ignored() {
 fn test_hotkey_with_stop_on_child_exit() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&[
         "--restart-hotkey",
         "r",
@@ -208,7 +208,7 @@ fn test_hotkey_with_stop_on_child_exit() {
 fn test_restart_with_stop_on_child_exit() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&[
         "--stop-on-child-exit",
         "--",

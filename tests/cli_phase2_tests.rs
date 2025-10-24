@@ -13,7 +13,7 @@ use std::time::Duration;
 fn test_sigterm_graceful_shutdown() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&["--", "sleep", "30"]);
 
     let mut child = pair.slave.spawn_command(cmd).unwrap();
@@ -53,7 +53,7 @@ fn test_sigterm_graceful_shutdown() {
 fn test_sigint_graceful_shutdown() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&["--", "sleep", "30"]);
 
     let mut child = pair.slave.spawn_command(cmd).unwrap();
@@ -93,7 +93,7 @@ fn test_sigint_graceful_shutdown() {
 fn test_restart_signal() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&["--", "bash", "-c", "echo 'started'; sleep 10"]);
 
     let mut child = pair.slave.spawn_command(cmd).unwrap();
@@ -160,7 +160,7 @@ sleep 30
         std::fs::set_permissions(temp_file.path(), perms).unwrap();
     }
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.arg(temp_file.path().to_str().unwrap());
 
     let mut child = pair.slave.spawn_command(cmd).unwrap();

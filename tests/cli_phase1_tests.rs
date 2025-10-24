@@ -16,7 +16,7 @@ use std::time::Duration;
 // Manual test: cargo run -- --help
 #[test]
 fn test_help_flag() {
-    let mut cmd = Command::cargo_bin("supi-cli").unwrap();
+    let mut cmd = Command::cargo_bin("supi").unwrap();
     cmd.arg("--help")
         .assert()
         .success()
@@ -29,7 +29,7 @@ fn test_help_flag() {
 // Manual test: cargo run -- --version
 #[test]
 fn test_version_flag() {
-    let mut cmd = Command::cargo_bin("supi-cli").unwrap();
+    let mut cmd = Command::cargo_bin("supi").unwrap();
     let cargo_pkg_version = env!("CARGO_PKG_VERSION");
     cmd.arg("--version")
         .assert()
@@ -40,7 +40,7 @@ fn test_version_flag() {
 // Manual test: cargo run -- -V
 #[test]
 fn test_version_flag_short() {
-    let mut cmd = Command::cargo_bin("supi-cli").unwrap();
+    let mut cmd = Command::cargo_bin("supi").unwrap();
     let cargo_pkg_version = env!("CARGO_PKG_VERSION");
     cmd.arg("-V")
         .assert()
@@ -51,7 +51,7 @@ fn test_version_flag_short() {
 // Manual test: cargo run --
 #[test]
 fn test_missing_command_fails() {
-    let mut cmd = Command::cargo_bin("supi-cli").unwrap();
+    let mut cmd = Command::cargo_bin("supi").unwrap();
     cmd.assert()
         .failure()
         .stderr(predicate::str::contains("required"));
@@ -60,7 +60,7 @@ fn test_missing_command_fails() {
 // Manual test: cargo run -- this_command_does_not_exist_xyz123
 #[test]
 fn test_nonexistent_command() {
-    let mut cmd = Command::cargo_bin("supi-cli").unwrap();
+    let mut cmd = Command::cargo_bin("supi").unwrap();
     cmd.arg("this_command_does_not_exist_xyz123")
         .timeout(std::time::Duration::from_secs(2))
         .assert()
@@ -77,7 +77,7 @@ fn test_nonexistent_command() {
 fn test_simple_echo() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&["--stop-on-child-exit", "echo", "hello world"]);
 
     let mut child = pair.slave.spawn_command(cmd).unwrap();
@@ -105,7 +105,7 @@ fn test_simple_echo() {
 fn test_stop_on_child_exit_flag() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&["--stop-on-child-exit", "echo", "test message"]);
 
     let mut child = pair.slave.spawn_command(cmd).unwrap();
@@ -138,7 +138,7 @@ fn test_stop_on_child_exit_flag() {
 fn test_stdout_forwarding() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&[
         "--stop-on-child-exit",
         "--",
@@ -182,7 +182,7 @@ fn test_stdout_forwarding() {
 fn test_stderr_forwarding() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&[
         "--stop-on-child-exit",
         "--",

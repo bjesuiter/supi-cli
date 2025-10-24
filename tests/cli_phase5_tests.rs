@@ -18,7 +18,7 @@ use std::time::Duration;
 fn test_silent_flag_suppresses_supervisor_output() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&["--silent", "--stop-on-child-exit", "echo", "child output"]);
 
     let mut child = pair.slave.spawn_command(cmd).unwrap();
@@ -55,7 +55,7 @@ fn test_silent_flag_suppresses_supervisor_output() {
 fn test_silent_flag_preserves_child_output() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&[
         "--silent",
         "--stop-on-child-exit",
@@ -104,7 +104,7 @@ fn test_silent_flag_preserves_child_output() {
 fn test_without_silent_flag_shows_supervisor_output() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&["--stop-on-child-exit", "echo", "child output"]);
 
     let mut child = pair.slave.spawn_command(cmd).unwrap();
@@ -151,7 +151,7 @@ fn test_log_color_flag() {
     for color in valid_colors {
         let (pair, _output, reader_thread) = create_pty_with_reader();
 
-        let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+        let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
         cmd.args(&["--log-color", color, "--stop-on-child-exit", "echo", "test"]);
 
         let mut child = pair.slave.spawn_command(cmd).unwrap();
@@ -168,7 +168,7 @@ fn test_log_color_flag() {
     }
 
     // Test invalid color - should fail
-    let mut cmd = Command::cargo_bin("supi-cli").unwrap();
+    let mut cmd = Command::cargo_bin("supi").unwrap();
     cmd.args(&[
         "--log-color",
         "invalid_color",
@@ -187,7 +187,7 @@ fn test_log_color_flag() {
 fn test_colored_output() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&[
         "--log-color",
         "yellow",
@@ -234,7 +234,7 @@ fn test_colored_output() {
 fn test_no_color_option() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&[
         "--log-color",
         "none",
@@ -296,7 +296,7 @@ fn test_no_color_option() {
 fn test_different_colors_produce_different_codes() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&[
         "--log-color",
         "red",
@@ -332,7 +332,7 @@ fn test_different_colors_produce_different_codes() {
 fn test_info_color_independent() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&[
         "--log-color",
         "red",
@@ -372,12 +372,12 @@ fn test_info_color_independent() {
 // Test that debounce is disabled when set to 0ms (all restarts allowed)
 #[test]
 fn test_debounce_disabled_allows_rapid_restarts() {
-    use nix::sys::signal::{Signal, kill};
+    use nix::sys::signal::{kill, Signal};
     use nix::unistd::Pid;
 
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&[
         "--restart-debounce-ms",
         "0",
@@ -435,12 +435,12 @@ fn test_debounce_disabled_allows_rapid_restarts() {
 // Test that debounce prevents rapid restarts
 #[test]
 fn test_debounce_prevents_rapid_restarts() {
-    use nix::sys::signal::{Signal, kill};
+    use nix::sys::signal::{kill, Signal};
     use nix::unistd::Pid;
 
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&[
         "--restart-debounce-ms",
         "500", // 500ms debounce
@@ -505,12 +505,12 @@ fn test_debounce_prevents_rapid_restarts() {
 // Test that restart succeeds after debounce window expires
 #[test]
 fn test_debounce_allows_restart_after_window_expires() {
-    use nix::sys::signal::{Signal, kill};
+    use nix::sys::signal::{kill, Signal};
     use nix::unistd::Pid;
 
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&[
         "--restart-debounce-ms",
         "200", // 200ms debounce
@@ -585,7 +585,7 @@ fn test_debounce_allows_restart_after_window_expires() {
 fn test_debounce_affects_hotkey_restarts() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&[
         "--restart-debounce-ms",
         "500",

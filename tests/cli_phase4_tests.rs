@@ -13,7 +13,7 @@ use std::time::Duration;
 fn test_pty_long_running_process_with_hotkey() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&["--", "bash", "-c", "echo 'Process started'; sleep 30"]);
 
     let mut child = pair.slave.spawn_command(cmd).unwrap();
@@ -57,7 +57,7 @@ fn test_pty_long_running_process_with_hotkey() {
 fn test_pty_process_exits_immediately() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&["--stop-on-child-exit", "echo", "quick exit"]);
 
     let mut child = pair.slave.spawn_command(cmd).unwrap();
@@ -90,7 +90,7 @@ fn test_pty_process_exits_immediately() {
 fn test_pty_continuous_output() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&[
         "--",
         "bash",
@@ -132,7 +132,7 @@ fn test_pty_continuous_output() {
 fn test_pty_process_ignores_sigterm() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi"));
     cmd.args(&[
         "--",
         "bash",
