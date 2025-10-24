@@ -4,7 +4,7 @@
     edition     = "2021"
     license     = "MIT OR Apache-2.0"
     authors     = ["bjesuiter"]
-    description = "A simple process supervisor for spawning and managing arbitrary commands"
+    description = "A simple process supervisor for spawning, restarting and stopping arbitrary commands"
     repository  = "https://github.com/bjesuiter/supi-cli"
     homepage    = "https://github.com/bjesuiter/supi-cli"
     readme      = "README.md"
