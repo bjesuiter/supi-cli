@@ -1,5 +1,5 @@
 mod cli;
-mod hotkey;
+mod input;
 mod output;
 mod process;
 mod signals;
@@ -7,7 +7,7 @@ mod supervisor;
 
 use clap::Parser;
 use cli::Cli;
-use hotkey::HotkeyListener;
+use input::CommandReader;
 use process::ProcessManager;
 use signals::SignalHandler;
 use supervisor::Supervisor;
@@ -19,27 +19,23 @@ async fn main() -> anyhow::Result<()> {
     sprintln!("[supi] Supervisor PID: {}", std::process::id());
     sprintln!("[supi] Starting supervisor");
     sprintln!(
-        "[supi] Config: restart_signal={}, restart_hotkey='{}', stop_on_child_exit={}",
+        "[supi] Config: restart_signal={}, stop_on_child_exit={}",
         args.restart_signal,
-        args.restart_hotkey,
         args.stop_on_child_exit
     );
 
     let process_manager = ProcessManager::new(args.command, args.args);
     let signal_handler = SignalHandler::new(&args.restart_signal)?;
 
-    // Set up hotkey listener
-    let hotkey_listener = match HotkeyListener::new(args.restart_hotkey) {
-        Ok(listener) => {
-            sprintln!(
-                "[supi] Hotkey listener active: press '{}' to restart",
-                args.restart_hotkey
-            );
-            Some(listener)
+    // Set up stdin command reader
+    let command_reader = match CommandReader::new() {
+        Ok(reader) => {
+            sprintln!("[supi] Command reader active: type 'help' for available commands");
+            Some(reader)
         }
         Err(e) => {
-            seprintln!("[supi] Warning: Could not enable hotkey listener: {}", e);
-            seprintln!("[supi] Continuing without hotkey support (signals still work)");
+            seprintln!("[supi] Warning: Could not enable command reader: {}", e);
+            seprintln!("[supi] Continuing without stdin commands (signals still work)");
             None
         }
     };
@@ -47,7 +43,7 @@ async fn main() -> anyhow::Result<()> {
     let mut supervisor = Supervisor::new(
         process_manager,
         signal_handler,
-        hotkey_listener,
+        command_reader,
         args.stop_on_child_exit,
     );
 

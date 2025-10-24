@@ -13,10 +13,6 @@ pub struct Cli {
     #[arg(long, default_value = "SIGUSR1")]
     pub restart_signal: String,
 
-    /// Hotkey character for manual restart (default: 'r')
-    #[arg(long, default_value = "r")]
-    pub restart_hotkey: char,
-
     /// Command to run
     #[arg(required = true)]
     pub command: String,

@@ -1,4 +1,4 @@
-use crate::hotkey::HotkeyListener;
+use crate::input::{Command, CommandReader};
 use crate::process::ProcessManager;
 use crate::signals::{SignalEvent, SignalHandler};
 use crate::{seprintln, sprintln};
@@ -7,7 +7,7 @@ use anyhow::Result;
 pub struct Supervisor {
     process_manager: ProcessManager,
     signal_handler: SignalHandler,
-    hotkey_listener: Option<HotkeyListener>,
+    command_reader: Option<CommandReader>,
     stop_on_child_exit: bool,
 }
 
@@ -15,13 +15,13 @@ impl Supervisor {
     pub fn new(
         process_manager: ProcessManager,
         signal_handler: SignalHandler,
-        hotkey_listener: Option<HotkeyListener>,
+        command_reader: Option<CommandReader>,
         stop_on_child_exit: bool,
     ) -> Self {
         Self {
             process_manager,
             signal_handler,
-            hotkey_listener,
+            command_reader,
             stop_on_child_exit,
         }
     }
@@ -51,19 +51,38 @@ impl Supervisor {
                         }
                     }
                 }
-                // Handle hotkey press
-                Some(_) = async {
-                    match &mut self.hotkey_listener {
-                        Some(listener) => listener.next().await,
+                // Handle stdin commands
+                Some(command) = async {
+                    match &mut self.command_reader {
+                        Some(reader) => reader.next().await,
                         None => std::future::pending().await,
                     }
                 } => {
-                    sprintln!("[supi] Hotkey pressed, restarting...");
-                    if self.process_manager.is_running() {
-                        self.process_manager.restart().await?;
-                    } else {
-                        sprintln!("[supi] Child process not running, starting...");
-                        self.process_manager.spawn().await?;
+                    match command {
+                        Command::Restart => {
+                            sprintln!("[supi] Restart command received");
+                            if self.process_manager.is_running() {
+                                self.process_manager.restart().await?;
+                            } else {
+                                sprintln!("[supi] Child process not running, starting...");
+                                self.process_manager.spawn().await?;
+                            }
+                        }
+                        Command::Quit => {
+                            sprintln!("[supi] Quit command received, shutting down...");
+                            self.process_manager.shutdown().await?;
+                            break;
+                        }
+                        Command::Status => {
+                            if self.process_manager.is_running() {
+                                sprintln!("[supi] Child process is running");
+                            } else {
+                                sprintln!("[supi] Child process is not running");
+                            }
+                        }
+                        Command::Help => {
+                            sprintln!("{}", Command::help_text());
+                        }
                     }
                 }
                 // Handle child process exit
@@ -77,8 +96,8 @@ impl Supervisor {
                                 break;
                             } else {
                                 sprintln!("[supi] Child process exited, but supervisor continues running");
-                                if self.hotkey_listener.is_some() {
-                                    sprintln!("[supi] (Press Ctrl+C to exit, or press hotkey/send restart signal to restart)");
+                                if self.command_reader.is_some() {
+                                    sprintln!("[supi] (Press Ctrl+C to exit, type 'restart' or 'r' to restart, 'help' for commands)");
                                 } else {
                                     sprintln!("[supi] (Press Ctrl+C to exit, or send restart signal to restart)");
                                 }

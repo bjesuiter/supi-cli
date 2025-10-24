@@ -22,7 +22,6 @@ after each phase as defined in @actions/writing_integration_tests.md.
 - **Arguments to implement**:
   - `--stop-on-child-exit`: Boolean flag
   - `--restart-signal <SIGNAL>`: Signal name (default: SIGUSR1)
-  - `--restart-hotkey <KEY>`: Single character (default: 'r')
   - Positional args: Command and its arguments
 
 ### 2. Process Management
@@ -48,14 +47,14 @@ after each phase as defined in @actions/writing_integration_tests.md.
   - Wait for child to exit gracefully
   - Force kill if child doesn't exit within timeout
 
-### 4. Terminal Input (Hotkey Detection)
+### 4. Terminal Input (Command Detection)
 
-- **Library**: `crossterm` for cross-platform terminal manipulation
+- **Library**: `tokio` for async stdin reading
 - **Features**:
-  - Enable raw mode to capture single keystrokes
+  - Read stdin line-by-line in normal terminal mode
+  - Parse simple commands (restart, quit, status, etc.)
   - Non-blocking input reading
-  - Detect restart hotkey
-  - Clean terminal state on exit
+  - No raw mode needed - simpler architecture
 
 ### 5. Output Forwarding
 
@@ -75,7 +74,7 @@ after each phase as defined in @actions/writing_integration_tests.md.
   - Child process stderr data
   - Child process exit
   - Unix signals (restart, terminate)
-  - Terminal input (hotkey press)
+  - Stdin commands (restart, quit, status)
   - Graceful shutdown coordination
 
 ## Technical Implementation Details
@@ -87,7 +86,6 @@ after each phase as defined in @actions/writing_integration_tests.md.
 clap = { version = "4.5", features = ["derive"] }
 tokio = { version = "1.40", features = ["full"] }
 tokio-util = { version = "0.7", features = ["io"] }
-crossterm = "0.28"
 anyhow = "1.0"
 signal-hook = "0.3"
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
@@ -101,7 +99,7 @@ src/
 ├── cli.rs            - Clap CLI argument definitions
 ├── process.rs        - Process spawning and management
 ├── signals.rs        - Signal handling setup
-├── hotkey.rs         - Terminal input and hotkey detection
+├── input.rs          - Stdin command reading and parsing
 └── supervisor.rs     - Main supervisor coordination logic
 ```
 
@@ -125,14 +123,13 @@ src/
 - [x] Implement restart logic (terminate child, respawn)
 - [x] Test signal handling
 
-### Phase 3: Interactive Hotkey
+### Phase 3: Interactive Commands
 
-- [x] Set up crossterm raw mode
-- [x] Create async task for reading terminal input
-- [x] Detect restart hotkey press
-- [x] Trigger restart on hotkey
-- [x] Handle terminal cleanup on exit
-- [x] Make hotkey configurable
+- [x] Create async task for reading stdin line-by-line
+- [x] Parse simple commands (restart, quit, etc.)
+- [x] Trigger restart on command
+- [x] Handle quit command for graceful exit
+- [x] No raw mode needed - simpler architecture
 
 ### Phase 4: Advanced Features
 
@@ -152,20 +149,19 @@ src/
 - [ ] Documentation improvements
 - [ ] Add examples directory
 
-### Phase 6: Vim-Style Interactive Mode (Future)
+### Phase 6: Stdin Forwarding Mode (Future)
 
-- [ ] Add terminal mode state machine (Normal/Insert modes)
-- [ ] Normal mode: Raw mode for hotkeys (current behavior)
-  - Hotkeys active (restart, quit, etc.)
-  - No stdin forwarding to child
-- [ ] Insert mode: Pass-through mode for stdin
-  - Press 'i' to enter insert mode
-  - Forward stdin to child process
-  - Press ESC to return to normal mode
-  - Visual indicator showing current mode
-- [ ] Add --interactive flag to start in insert mode
-- [ ] Display mode indicator (e.g., "-- INSERT --" or "-- NORMAL --")
-- [ ] Smooth mode transitions without disrupting child process
+- [ ] Add --forward-stdin flag to forward stdin to child process
+- [ ] When disabled (default): Parse stdin as commands (restart, quit, status)
+  - Read line-by-line
+  - Parse commands like "restart", "quit", "status", "r", "q", "s"
+  - Display help with available commands
+- [ ] When enabled: Forward stdin directly to child
+  - No command parsing
+  - Direct pipe from stdin to child process
+  - Can still restart via signals
+- [ ] Much simpler than vim-style mode switching
+- [ ] Clear, predictable behavior based on flag
 
 ## Key Technical Challenges
 
@@ -182,13 +178,15 @@ coordination **Solution**: Use `tokio::select!` to multiplex events in main loop
 - Implement timeout-based forced termination
 - Handle zombie processes
 
-### Challenge 3: Raw Terminal Mode Cleanup
+### Challenge 3: Stdin vs Child Process Input
 
-**Problem**: If app crashes, terminal may remain in raw mode **Solution**:
+**Problem**: Stdin used for commands means child can't receive stdin by default
+**Solution**:
 
-- Use crossterm's automatic cleanup
-- Implement custom panic handler to restore terminal
-- Test with various exit scenarios
+- Default: Parse stdin as supervisor commands
+- Future: Add --forward-stdin flag to pipe stdin directly to child
+- Document behavior clearly
+- Signal-based restart always available as alternative
 
 ### Challenge 4: Output Forwarding Without Delay
 
@@ -206,18 +204,16 @@ coordination **Solution**: Use `tokio::select!` to multiplex events in main loop
 - Document Unix-only requirement
 - Consider future Windows support with named events
 
-### Challenge 6: Vim-Style Mode Switching (Phase 6)
+### Challenge 6: Stdin Command vs Forwarding (Phase 6)
 
-**Problem**: Toggle between raw mode (hotkeys) and cooked mode (stdin
-forwarding) **Solution**:
+**Problem**: Choose between parsing commands or forwarding to child
+**Solution**:
 
-- Maintain mode state (Normal/Insert)
-- Disable terminal raw mode when entering insert mode
-- Re-enable raw mode when returning to normal mode
-- Use channel to communicate stdin data to child process
-- Display visual indicator of current mode
-- Handle ESC key detection in insert mode to return to normal
-- Ensure smooth transitions without disrupting child output
+- Add --forward-stdin flag to control behavior
+- When disabled: tokio::io::BufReader line-by-line, parse as commands
+- When enabled: tokio::io::copy stdin directly to child stdin
+- No mode switching needed - behavior set at startup
+- Simpler implementation, clearer semantics
 
 ## Testing Strategy
 

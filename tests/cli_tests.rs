@@ -286,12 +286,12 @@ sleep 30
     assert!(stdout_str.contains("Stopping child process"));
 }
 
-// Phase 3 Tests: Interactive Hotkey
+// Phase 3 Tests: Interactive Commands
 
 // Manual test: cargo run -- bash -c "echo 'started'; sleep 10"
-//              (then press 'r' in the terminal, should see process restart)
+//              (then type 'r' or 'restart' in the terminal, should see process restart)
 #[test]
-fn test_default_hotkey_restart() {
+fn test_restart_command_short() {
     use std::io::Write;
     use std::process::Command as StdCommand;
 
@@ -312,9 +312,9 @@ fn test_default_hotkey_restart() {
     // Give it time to start
     std::thread::sleep(Duration::from_secs(1));
 
-    // Send 'r' to stdin to trigger restart
+    // Send 'r\n' to stdin to trigger restart (need newline!)
     if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(b"r").unwrap();
+        stdin.write_all(b"r\n").unwrap();
         stdin.flush().unwrap();
     }
 
@@ -340,17 +340,15 @@ fn test_default_hotkey_restart() {
     );
 }
 
-// Manual test: cargo run -- --restart-hotkey x bash -c "echo 'started'; sleep 10"
-//              (then press 'x' in the terminal)
+// Manual test: cargo run -- bash -c "echo 'started'; sleep 10"
+//              (then type 'restart' in the terminal)
 #[test]
-fn test_custom_hotkey_restart() {
+fn test_restart_command_long() {
     use std::io::Write;
     use std::process::Command as StdCommand;
 
-    // Spawn supi-cli with custom hotkey
+    // Spawn supi-cli with a command that prints on start
     let mut child = StdCommand::new(env!("CARGO_BIN_EXE_supi-cli"))
-        .arg("--restart-hotkey")
-        .arg("x")
         .arg("--")
         .arg("bash")
         .arg("-c")
@@ -366,9 +364,9 @@ fn test_custom_hotkey_restart() {
     // Give it time to start
     std::thread::sleep(Duration::from_secs(1));
 
-    // Send 'x' to stdin to trigger restart
+    // Send 'restart\n' to stdin to trigger restart
     if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(b"x").unwrap();
+        stdin.write_all(b"restart\n").unwrap();
         stdin.flush().unwrap();
     }
 
@@ -388,16 +386,16 @@ fn test_custom_hotkey_restart() {
     let started_count = stdout_str.matches("Process started").count();
     assert!(
         started_count >= 2,
-        "Expected at least 2 'Process started' messages with custom hotkey 'x', got {}. Output:\n{}",
+        "Expected at least 2 'Process started' messages with 'restart' command, got {}. Output:\n{}",
         started_count,
         stdout_str
     );
 }
 
 // Manual test: cargo run -- bash -- -c "echo 'started'; sleep 5"
-//              (press keys other than 'r', should NOT restart)
+//              (type invalid commands, should NOT restart)
 #[test]
-fn test_non_hotkey_characters_ignored() {
+fn test_invalid_commands_ignored() {
     use std::io::Write;
     use std::process::Command as StdCommand;
 
@@ -428,9 +426,11 @@ fn test_non_hotkey_characters_ignored() {
     // Give it time to start
     std::thread::sleep(Duration::from_secs(1));
 
-    // Send non-hotkey characters to stdin (avoid 'r' which is the default hotkey)
+    // Send invalid commands to stdin (with newlines, but invalid commands)
     if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(b"abc123xyz").unwrap();
+        stdin.write_all(b"invalid\n").unwrap();
+        stdin.write_all(b"xyz123\n").unwrap();
+        stdin.write_all(b"notacommand\n").unwrap();
         stdin.flush().unwrap();
     }
 
@@ -448,8 +448,8 @@ fn test_non_hotkey_characters_ignored() {
 
     // Should NOT see restart message (direct indicator that restart didn't happen)
     assert!(
-        !stdout_str.contains("Restarting child process"),
-        "Process should not have restarted from non-hotkey characters. Output:\n{}",
+        !stdout_str.contains("Restart command received"),
+        "Process should not have restarted from invalid commands. Output:\n{}",
         stdout_str
     );
 
@@ -464,25 +464,51 @@ fn test_non_hotkey_characters_ignored() {
     );
 }
 
-// Manual test: cargo run -- --restart-hotkey r --stop-on-child-exit bash -c "echo 'done'; exit 0"
-//              (verify hotkey is accepted with other flags)
+// Manual test: cargo run -- bash -c "echo 'started'; sleep 10"
+//              (type 'q' or 'quit' to gracefully exit)
 #[test]
-fn test_hotkey_with_stop_on_child_exit() {
-    let mut cmd = Command::cargo_bin("supi-cli").unwrap();
-    cmd.arg("--restart-hotkey")
-        .arg("r")
-        .arg("--stop-on-child-exit")
-        .arg("echo")
-        .arg("test output")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("test output"));
+fn test_quit_command() {
+    use std::io::Write;
+    use std::process::Command as StdCommand;
+
+    // Spawn supi-cli with a long-running process
+    let mut child = StdCommand::new(env!("CARGO_BIN_EXE_supi-cli"))
+        .arg("--")
+        .arg("bash")
+        .arg("-c")
+        .arg("echo 'Process started'; sleep 30")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn supi-cli");
+
+    // Give it time to start
+    std::thread::sleep(Duration::from_secs(1));
+
+    // Send 'q\n' to stdin to trigger quit
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(b"q\n").unwrap();
+        stdin.flush().unwrap();
+    }
+
+    // Wait for it to exit gracefully
+    let output = child.wait_with_output().expect("Failed to wait for child");
+    let stdout_str = String::from_utf8_lossy(&output.stdout);
+
+    // Should see quit message
+    assert!(
+        stdout_str.contains("Quit command received"),
+        "Expected quit message. Output:\n{}",
+        stdout_str
+    );
+    assert!(output.status.success());
 }
 
 // Manual test: cargo run -- --stop-on-child-exit bash -c "echo 'started'; sleep 3"
-//              (press 'r' after 1s, verify restart happens, then supervisor exits when child exits)
+//              (type 'r' after 1s, verify restart happens, then supervisor exits when child exits)
 #[test]
-fn test_restart_with_stop_on_child_exit() {
+fn test_restart_command_with_stop_on_child_exit() {
     use std::io::Write;
     use std::process::Command as StdCommand;
 
@@ -502,9 +528,9 @@ fn test_restart_with_stop_on_child_exit() {
     // Give it time to start
     std::thread::sleep(Duration::from_secs(1));
 
-    // Send 'r' to stdin to trigger restart while child is still running
+    // Send 'r\n' to stdin to trigger restart while child is still running
     if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(b"r").unwrap();
+        stdin.write_all(b"r\n").unwrap();
         stdin.flush().unwrap();
     }
 
