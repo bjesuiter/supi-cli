@@ -60,13 +60,17 @@ Update `src/supervisor.rs` to use tokio::select! for event loop.
 ### Phase 1 (CLI & Skeleton)
 
 ```bash
-# Test help output
-bx run -- --help
+# Test help output (use direct bonnie command)
+bx helpArg
 
 # Test version
-bx run -- --version
+bx versionArg
 
-# Test basic argument parsing (will show stub error)
+# Or use cargo directly
+cargo run -- --help
+cargo run -- --version
+
+# Test basic argument parsing (shows stub error in Phase 1)
 bx run echo hello
 ```
 

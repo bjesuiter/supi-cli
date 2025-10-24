@@ -2,6 +2,7 @@ use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[command(name = "supi-cli")]
+#[command(version)]
 #[command(about = "A lightweight process supervisor with restart capabilities", long_about = None)]
 pub struct Cli {
     /// Stop the supervisor when the child process exits

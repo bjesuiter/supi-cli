@@ -67,6 +67,9 @@ bx run bash -- -c 'for i in {1..5}; do echo $i; sleep 1; done'
 
 # With flags
 bx run --stop-on-child-exit echo "test"
+
+# Note: Don't use `bx run -- --help` (bonnie passes it as command)
+# Instead use: bx helpArg or cargo run -- --help
 ```
 
 ## Example Entry
