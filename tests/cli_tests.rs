@@ -115,7 +115,8 @@ fn test_stderr_forwarding() {
 
 // Phase 2 Tests: Signal Handling
 
-// Test SIGTERM graceful shutdown
+// Manual test: cargo run -- sleep 30
+//              (note the PID shown, then in another terminal: kill -TERM <pid>)
 #[test]
 fn test_sigterm_graceful_shutdown() {
     use std::process::Command as StdCommand;
@@ -149,7 +150,8 @@ fn test_sigterm_graceful_shutdown() {
     assert!(output.status.success());
 }
 
-// Test SIGINT (Ctrl+C) graceful shutdown
+// Manual test: cargo run -- sleep 30
+//              (then press Ctrl+C or in another terminal: kill -INT <pid>)
 #[test]
 fn test_sigint_graceful_shutdown() {
     use std::process::Command as StdCommand;
@@ -183,7 +185,8 @@ fn test_sigint_graceful_shutdown() {
     assert!(output.status.success());
 }
 
-// Test SIGUSR1 restart signal
+// Manual test: cargo run -- bash -c "echo 'started'; sleep 10"
+//              (note the PID, then in another terminal: kill -USR1 <pid>, then: kill -TERM <pid>)
 #[test]
 fn test_restart_signal() {
     use std::process::Command as StdCommand;
@@ -228,7 +231,9 @@ fn test_restart_signal() {
     assert!(stdout_str.contains("Received restart signal") || stdout_str.contains("Restarting"));
 }
 
-// Test signal forwarding to child
+// Manual test: Create test.sh with: trap 'echo "Child got SIGTERM"; exit 0' TERM; echo "Started"; sleep 30
+//              Then: chmod +x test.sh && cargo run -- ./test.sh
+//              (note the PID, then in another terminal: kill -TERM <pid>)
 #[test]
 fn test_signal_forwarding_to_child() {
     use std::process::Command as StdCommand;
