@@ -134,6 +134,14 @@ cargo install --path .
 - Unix-like operating system (Linux, macOS)
 - Rust 1.86 or higher
 
+## Distribution Targets
+
+Pre-built binaries are available for:
+
+- `aarch64-apple-darwin` - Apple Silicon macOS
+- `x86_64-unknown-linux-gnu` - Linux with glibc
+- `x86_64-unknown-linux-musl` - Linux static binary (portable)
+
 ## License
 
 Licensed under either of:
