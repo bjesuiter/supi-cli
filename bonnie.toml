@@ -19,7 +19,7 @@ version = "0.3.2"
     dev.desc = "Quick dev test - runs echo command under supervision"
 
     # Test with actual long-running process
-    dev-sleep.cmd  = "cargo run -- bash -c 'while true; do echo tick; sleep 1; done'"
+    dev-sleep.cmd  = "cargo run -- -- bash -c 'while true; do echo tick; sleep 1; done'"
     dev-sleep.desc = "Test with infinite loop process (press 'r' to restart, Ctrl+C to stop)"
 
     # Testing commands
