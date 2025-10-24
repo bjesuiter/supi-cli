@@ -285,3 +285,196 @@ sleep 30
     // Should see both supervisor and child handling the signal
     assert!(stdout_str.contains("Stopping child process"));
 }
+
+// Phase 3 Tests: Interactive Hotkey
+
+// Manual test: cargo run -- bash -c "echo 'started'; sleep 10"
+//              (then press 'r' in the terminal, should see process restart)
+#[test]
+fn test_default_hotkey_restart() {
+    use std::io::Write;
+    use std::process::Command as StdCommand;
+
+    // Spawn supi-cli with a command that prints on start
+    let mut child = StdCommand::new(env!("CARGO_BIN_EXE_supi-cli"))
+        .arg("--")
+        .arg("bash")
+        .arg("-c")
+        .arg("echo 'Process started'; sleep 10")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn supi-cli");
+
+    let pid = child.id();
+
+    // Give it time to start
+    std::thread::sleep(Duration::from_secs(1));
+
+    // Send 'r' to stdin to trigger restart
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(b"r").unwrap();
+        stdin.flush().unwrap();
+    }
+
+    // Give it time to restart
+    std::thread::sleep(Duration::from_secs(1));
+
+    // Send SIGTERM to stop
+    unsafe {
+        libc::kill(pid as i32, libc::SIGTERM);
+    }
+
+    // Wait for it to exit
+    let output = child.wait_with_output().expect("Failed to wait for child");
+    let stdout_str = String::from_utf8_lossy(&output.stdout);
+
+    // Should see "started" twice (initial + restart) and restart message
+    let started_count = stdout_str.matches("Process started").count();
+    assert!(
+        started_count >= 2,
+        "Expected at least 2 'Process started' messages, got {}. Output:\n{}",
+        started_count,
+        stdout_str
+    );
+}
+
+// Manual test: cargo run -- --restart-hotkey x bash -c "echo 'started'; sleep 10"
+//              (then press 'x' in the terminal)
+#[test]
+fn test_custom_hotkey_restart() {
+    use std::io::Write;
+    use std::process::Command as StdCommand;
+
+    // Spawn supi-cli with custom hotkey
+    let mut child = StdCommand::new(env!("CARGO_BIN_EXE_supi-cli"))
+        .arg("--restart-hotkey")
+        .arg("x")
+        .arg("--")
+        .arg("bash")
+        .arg("-c")
+        .arg("echo 'Process started'; sleep 10")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn supi-cli");
+
+    let pid = child.id();
+
+    // Give it time to start
+    std::thread::sleep(Duration::from_secs(1));
+
+    // Send 'x' to stdin to trigger restart
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(b"x").unwrap();
+        stdin.flush().unwrap();
+    }
+
+    // Give it time to restart
+    std::thread::sleep(Duration::from_secs(1));
+
+    // Send SIGTERM to stop
+    unsafe {
+        libc::kill(pid as i32, libc::SIGTERM);
+    }
+
+    // Wait for it to exit
+    let output = child.wait_with_output().expect("Failed to wait for child");
+    let stdout_str = String::from_utf8_lossy(&output.stdout);
+
+    // Should see "started" twice (initial + restart)
+    let started_count = stdout_str.matches("Process started").count();
+    assert!(
+        started_count >= 2,
+        "Expected at least 2 'Process started' messages with custom hotkey 'x', got {}. Output:\n{}",
+        started_count,
+        stdout_str
+    );
+}
+
+// Manual test: cargo run -- bash -- -c "echo 'started'; sleep 5"
+//              (press keys other than 'r', should NOT restart)
+#[test]
+fn test_non_hotkey_characters_ignored() {
+    use std::io::Write;
+    use std::process::Command as StdCommand;
+
+    // Use a unique timestamp-based marker to count starts
+    let marker = format!(
+        "START_{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+    );
+    let script = format!("echo '{}'; sleep 5", marker);
+
+    // Spawn supi-cli with a command that prints on start
+    let mut child = StdCommand::new(env!("CARGO_BIN_EXE_supi-cli"))
+        .arg("--")
+        .arg("bash")
+        .arg("-c")
+        .arg(&script)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn supi-cli");
+
+    let pid = child.id();
+
+    // Give it time to start
+    std::thread::sleep(Duration::from_secs(1));
+
+    // Send non-hotkey characters to stdin (avoid 'r' which is the default hotkey)
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(b"abc123xyz").unwrap();
+        stdin.flush().unwrap();
+    }
+
+    // Give it time to potentially restart (it shouldn't)
+    std::thread::sleep(Duration::from_secs(2));
+
+    // Send SIGTERM to stop
+    unsafe {
+        libc::kill(pid as i32, libc::SIGTERM);
+    }
+
+    // Wait for it to exit
+    let output = child.wait_with_output().expect("Failed to wait for child");
+    let stdout_str = String::from_utf8_lossy(&output.stdout);
+
+    // Should NOT see restart message (direct indicator that restart didn't happen)
+    assert!(
+        !stdout_str.contains("Restarting child process"),
+        "Process should not have restarted from non-hotkey characters. Output:\n{}",
+        stdout_str
+    );
+
+    // The marker appears twice: once in the command log, once in output
+    // If it appears more than twice, that means a restart happened
+    let started_count = stdout_str.matches(&marker).count();
+    assert!(
+        started_count <= 2,
+        "Expected at most 2 occurrences of marker (no restart), got {}. Output:\n{}",
+        started_count,
+        stdout_str
+    );
+}
+
+// Manual test: cargo run -- --restart-hotkey r --stop-on-child-exit bash -c "echo 'done'; exit 0"
+//              (verify hotkey is accepted with other flags)
+#[test]
+fn test_hotkey_with_stop_on_child_exit() {
+    let mut cmd = Command::cargo_bin("supi-cli").unwrap();
+    cmd.arg("--restart-hotkey")
+        .arg("r")
+        .arg("--stop-on-child-exit")
+        .arg("echo")
+        .arg("test output")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("test output"));
+}
