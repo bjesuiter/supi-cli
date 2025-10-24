@@ -156,6 +156,7 @@ src/
   - Uses crossterm's color support (already in dependencies)
   - Colorizes `[supi]` prefix in all supervisor logs
   - Separate color for informational messages (hotkey prompts, Ctrl+C hints)
+  - Added "Child process running (PID: xxx)" log for clarity
   - Updated output.rs with colored output functions and macros
   - Passed color config through ProcessManager and Supervisor
 - [ ] Add restart debouncing (prevent rapid restarts)

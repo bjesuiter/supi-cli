@@ -69,7 +69,15 @@ impl ProcessManager {
             }
         });
 
+        let pid = child.id().unwrap_or(0);
         self.child = Some(child);
+
+        sprintln_colored!(
+            self.log_color,
+            "[supi] Child process running (PID: {})",
+            pid
+        );
+
         Ok(())
     }
 

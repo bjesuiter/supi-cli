@@ -227,6 +227,7 @@ Colored logging feature COMPLETE. Ready for additional features.
 - Informational messages use `--info-color` (green by default):
   - "Hotkey listener active" message
   - "Press Ctrl+C to exit" messages
+- Added "Child process running (PID: xxx)" log after spawn for clarity
 - Child process output remains uncolored (passthrough)
 - Error handling for invalid colors with helpful message
 
