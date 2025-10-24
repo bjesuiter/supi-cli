@@ -4,6 +4,8 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode},
 };
 use futures::StreamExt;
+use nix::sys::signal::{self, Signal};
+use nix::unistd::Pid;
 use tokio::sync::mpsc;
 
 /// Hotkey event emitted when the configured key is pressed
@@ -55,7 +57,10 @@ impl HotkeyListener {
                         modifiers: KeyModifiers::CONTROL,
                         ..
                     })) => {
-                        // Ctrl+C - let the signal handler deal with it, but exit this task
+                        // Ctrl+C detected in raw mode - send SIGINT to current process
+                        // so that the signal handler can properly handle it
+                        let pid = Pid::this();
+                        let _ = signal::kill(pid, Signal::SIGINT);
                         break;
                     }
                     Err(_) => {
