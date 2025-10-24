@@ -4,9 +4,13 @@ use predicates::prelude::*;
 #[test]
 fn test_help_flag() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
-    cmd.assert().success().stdout(predicate::str::contains(
-        "A lightweight process supervisor with restart capabilities",
-    ));
+    cmd.arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "A lightweight process supervisor with restart capabilities",
+        ))
+        .stdout(predicate::str::contains("Usage:"));
 }
 
 #[test]
