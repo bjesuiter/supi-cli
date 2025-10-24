@@ -27,6 +27,10 @@ pub struct Cli {
     #[arg(long, default_value = "green")]
     pub info_color: String,
 
+    /// Suppress all supervisor output (child process output still visible)
+    #[arg(long)]
+    pub silent: bool,
+
     /// Command to run
     #[arg(required = true)]
     pub command: String,

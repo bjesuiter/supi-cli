@@ -8,7 +8,7 @@ mod supervisor;
 use clap::Parser;
 use cli::Cli;
 use hotkey::HotkeyListener;
-use output::LogColor;
+use output::{LogColor, Output};
 use process::ProcessManager;
 use signals::SignalHandler;
 use supervisor::Supervisor;
@@ -17,36 +17,30 @@ use supervisor::Supervisor;
 async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
-    // Parse log colors
+    // Parse log colors and create Output instance
     let log_color = LogColor::from_str(&args.log_color).map_err(|e| anyhow::anyhow!(e))?;
     let info_color = LogColor::from_str(&args.info_color).map_err(|e| anyhow::anyhow!(e))?;
+    let output = Output::new(log_color, info_color, args.silent);
 
-    sprintln_colored!(log_color, "[supi] Supervisor PID: {}", std::process::id());
-    sprintln_colored!(log_color, "[supi] Starting supervisor");
-    sprintln_colored!(
-        log_color,
+    output.log(&format!("[supi] Supervisor PID: {}", std::process::id()));
+    output.log("[supi] Starting supervisor");
+    output.log(&format!(
         "[supi] Config: restart_signal={}, restart_hotkey='{}', stop_on_child_exit={}",
-        args.restart_signal,
-        args.restart_hotkey,
-        args.stop_on_child_exit
-    );
+        args.restart_signal, args.restart_hotkey, args.stop_on_child_exit
+    ));
 
-    let process_manager = ProcessManager::new(args.command, args.args, log_color);
+    let process_manager = ProcessManager::new(args.command, args.args, output.clone());
     let signal_handler = SignalHandler::new(&args.restart_signal)?;
 
-    // Set up hotkey listener (raw mode will be enabled in supervisorafter command validation)
+    // Set up hotkey listener (raw mode will be enabled in supervisor after command validation)
     let hotkey_listener = match HotkeyListener::new(args.restart_hotkey) {
         Ok(listener) => Some(listener),
         Err(e) => {
-            seprintln_colored!(
-                log_color,
+            output.elog(&format!(
                 "[supi] Warning: Could not set up hotkey listener: {}",
                 e
-            );
-            seprintln_colored!(
-                log_color,
-                "[supi] Continuing without hotkey support (signals still work)"
-            );
+            ));
+            output.elog("[supi] Continuing without hotkey support (signals still work)");
             None
         }
     };
@@ -58,8 +52,7 @@ async fn main() -> anyhow::Result<()> {
         args.stop_on_child_exit,
         args.restart_signal,
         args.restart_hotkey,
-        log_color,
-        info_color,
+        output,
     );
 
     supervisor.run().await?;

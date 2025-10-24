@@ -213,7 +213,8 @@ testing.
 
 **IN PROGRESS**
 
-Colored logging feature COMPLETE. Ready for additional features.
+Colored logging COMPLETE. --silent flag and Output struct refactoring COMPLETE.
+Ready for additional features.
 
 ### What's Implemented
 
@@ -231,15 +232,6 @@ Colored logging feature COMPLETE. Ready for additional features.
 - Child process output remains uncolored (passthrough)
 - Error handling for invalid colors with helpful message
 
-**Files Modified:**
-
-- `src/cli.rs`: Added log_color and info_color fields
-- `src/output.rs`: Added LogColor enum, colored print functions/macros
-- `src/main.rs`: Parse both colors and pass through to components
-- `src/supervisor.rs`: Store both colors, use info_color for informational
-  messages
-- `src/process.rs`: Use log_color for all process-related logs
-
 **✅ Configuration Display in Info Messages (COMPLETE):**
 
 - Store configured `restart_signal` and `restart_hotkey` on Supervisor struct
@@ -247,23 +239,61 @@ Colored logging feature COMPLETE. Ready for additional features.
   - Shows configured hotkey character in "Press hotkey '{}' to restart" message
   - Shows configured signal name in "send signal({}) to restart" message
 
+**✅ --silent Flag and Output Struct Refactoring (COMPLETE):**
+
+- Added `--silent` CLI flag to suppress all supervisor output
+- Child process output (stdout/stderr) always visible, never suppressed
+- Refactored `output.rs` from function-based to stateful `Output` struct
+- `Output` struct encapsulates: `log_color`, `info_color`, `silent` flag
+- Methods:
+  - `log()` - supervisor logs (colored with log_color, suppressed when silent)
+  - `info()` - informational messages (colored with info_color, suppressed when
+    silent)
+  - `elog()` / `einfo()` - stderr variants
+  - `forward_stdout()` / `forward_stderr()` - child output (never suppressed,
+    never colored)
+- Output struct is clonable and can be passed to spawned tasks
+- Clear separation between supervisor logs vs child output
+- Replaced macro-based output with struct methods throughout codebase
+
+**Files Modified:**
+
+- `src/cli.rs`: Added silent field
+- `src/output.rs`: Refactored to Output struct with methods
+- `src/main.rs`: Create Output instance and pass to components
+- `src/supervisor.rs`: Use Output struct instead of macros
+- `src/process.rs`: Use Output struct for all output, clone for spawned tasks
+- `bonnie.toml`: Added silentExample script
+
 **Testing:**
 
-- All 22 existing tests pass
-- Manual testing: default/custom/none colors work
+- All 25 tests pass (22 existing + 3 new)
+- New tests:
+  - `test_silent_flag_suppresses_supervisor_output` - Verifies supervisor
+    messages hidden
+  - `test_silent_flag_preserves_child_output` - Verifies child output still
+    visible
+  - `test_without_silent_flag_shows_supervisor_output` - Verifies default
+    behavior
+- Manual testing: --silent works correctly
 - Both log-color and info-color can be configured independently
 - Invalid colors show helpful error message
-- Help documentation includes both flags
+- Help documentation includes all flags
 
 ### Planned Items
 
 - [x] Add colored logging for supervisor messages
+- [x] Add --silent flag and refactor Output to stateful struct
 - [ ] Add restart debouncing (prevent rapid restarts)
-- [ ] Improve error messages and logging
-- [ ] Add process restart counter/statistics
 
-### Tests To Add
+### Tests Added
 
+- ✅ `test_silent_flag_suppresses_supervisor_output` - Verify --silent hides
+  supervisor output
+- ✅ `test_silent_flag_preserves_child_output` - Verify child output still
+  visible with --silent
+- ✅ `test_without_silent_flag_shows_supervisor_output` - Verify default
+  behavior
 - ⚠️ `test_log_color_flag` - Color flag parsing (manual testing done)
 - ⚠️ `test_colored_output` - Colored output (manual testing done)
 - ⚠️ `test_no_color_option` - --log-color=none (manual testing done)
@@ -296,7 +326,7 @@ Final polish, documentation, and distribution setup.
 
 **Run tests**: `bx test` or `bx test -- test_name`
 
-**Current: 22 tests passing** (Phases 1, 2, 3, & 4 complete)
+**Current: 25 tests passing** (Phases 1, 2, 3, 4, & 5 features complete)
 
 ### Test Breakdown
 
@@ -304,6 +334,7 @@ Final polish, documentation, and distribution setup.
 - Phase 2: 4 tests (Signals)
 - Phase 3: 5 tests (Hotkeys)
 - Phase 4: 4 tests (PTY-specific scenarios)
+- Phase 5: 3 tests (--silent flag)
 - **All tests now use PTY for clean output**
 
 ### All Tests
@@ -344,3 +375,9 @@ Final polish, documentation, and distribution setup.
 - ✅ `test_pty_process_exits_immediately`
 - ✅ `test_pty_continuous_output`
 - ✅ `test_pty_process_ignores_sigterm`
+
+**Silent Flag Tests (3 - via PTY):**
+
+- ✅ `test_silent_flag_suppresses_supervisor_output`
+- ✅ `test_silent_flag_preserves_child_output`
+- ✅ `test_without_silent_flag_shows_supervisor_output`

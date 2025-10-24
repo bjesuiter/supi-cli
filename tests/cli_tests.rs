@@ -903,3 +903,136 @@ fn test_pty_process_ignores_sigterm() {
     let _ = child.kill();
     let _ = child.wait();
 }
+
+// ============================================================================
+// Phase 5 Tests: --silent flag
+// ============================================================================
+
+// Test that --silent flag suppresses supervisor output
+#[test]
+fn test_silent_flag_suppresses_supervisor_output() {
+    use portable_pty::CommandBuilder;
+
+    let (pair, output, reader_thread) = create_pty_with_reader();
+
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.args(&["--silent", "--stop-on-child-exit", "echo", "child output"]);
+
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    drop(pair.slave);
+
+    let status = child.wait().unwrap();
+    std::thread::sleep(Duration::from_millis(500));
+
+    let output_bytes = output.lock().unwrap();
+    let output_str = String::from_utf8_lossy(&output_bytes);
+
+    // Child output should be visible
+    assert!(
+        output_str.contains("child output"),
+        "Expected child output to be visible. Output:\n{}",
+        output_str
+    );
+
+    // Supervisor messages should NOT be present
+    assert!(
+        !output_str.contains("[supi]"),
+        "Expected no supervisor messages with --silent flag. Output:\n{}",
+        output_str
+    );
+
+    assert!(status.success(), "Process should exit successfully");
+
+    drop(output_bytes);
+    let _ = reader_thread.join();
+}
+
+// Test that --silent flag preserves child output (both stdout and stderr)
+#[test]
+fn test_silent_flag_preserves_child_output() {
+    use portable_pty::CommandBuilder;
+
+    let (pair, output, reader_thread) = create_pty_with_reader();
+
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.args(&[
+        "--silent",
+        "--stop-on-child-exit",
+        "bash",
+        "--",
+        "-c",
+        "echo 'stdout message' && echo 'stderr message' >&2",
+    ]);
+
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    drop(pair.slave);
+
+    let status = child.wait().unwrap();
+    std::thread::sleep(Duration::from_millis(500));
+
+    let output_bytes = output.lock().unwrap();
+    let output_str = String::from_utf8_lossy(&output_bytes);
+
+    // Both stdout and stderr from child should be visible
+    assert!(
+        output_str.contains("stdout message"),
+        "Expected stdout to be visible. Output:\n{}",
+        output_str
+    );
+    assert!(
+        output_str.contains("stderr message"),
+        "Expected stderr to be visible. Output:\n{}",
+        output_str
+    );
+
+    // Supervisor messages should NOT be present
+    assert!(
+        !output_str.contains("[supi]"),
+        "Expected no supervisor messages with --silent flag. Output:\n{}",
+        output_str
+    );
+
+    assert!(status.success(), "Process should exit successfully");
+
+    drop(output_bytes);
+    let _ = reader_thread.join();
+}
+
+// Test that without --silent flag, supervisor messages ARE shown
+#[test]
+fn test_without_silent_flag_shows_supervisor_output() {
+    use portable_pty::CommandBuilder;
+
+    let (pair, output, reader_thread) = create_pty_with_reader();
+
+    let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_supi-cli"));
+    cmd.args(&["--stop-on-child-exit", "echo", "child output"]);
+
+    let mut child = pair.slave.spawn_command(cmd).unwrap();
+    drop(pair.slave);
+
+    let status = child.wait().unwrap();
+    std::thread::sleep(Duration::from_millis(500));
+
+    let output_bytes = output.lock().unwrap();
+    let output_str = String::from_utf8_lossy(&output_bytes);
+
+    // Child output should be visible
+    assert!(
+        output_str.contains("child output"),
+        "Expected child output to be visible. Output:\n{}",
+        output_str
+    );
+
+    // Supervisor messages SHOULD be present
+    assert!(
+        output_str.contains("[supi]"),
+        "Expected supervisor messages without --silent flag. Output:\n{}",
+        output_str
+    );
+
+    assert!(status.success(), "Process should exit successfully");
+
+    drop(output_bytes);
+    let _ = reader_thread.join();
+}

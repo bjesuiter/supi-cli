@@ -52,6 +52,72 @@ impl LogColor {
     }
 }
 
+/// Stateful output manager that handles supervisor and child process output
+/// with configurable colors and silent mode
+#[derive(Debug, Clone)]
+pub struct Output {
+    log_color: LogColor,
+    info_color: LogColor,
+    silent: bool,
+}
+
+impl Output {
+    /// Create a new Output instance
+    pub fn new(log_color: LogColor, info_color: LogColor, silent: bool) -> Self {
+        Self {
+            log_color,
+            info_color,
+            silent,
+        }
+    }
+
+    /// Print a supervisor log message (colored with log_color)
+    /// Suppressed when silent mode is enabled
+    pub fn log(&self, msg: &str) {
+        if self.silent {
+            return;
+        }
+        print_line_colored(msg, self.log_color);
+    }
+
+    /// Print a supervisor log message to stderr (colored with log_color)
+    /// Suppressed when silent mode is enabled
+    pub fn elog(&self, msg: &str) {
+        if self.silent {
+            return;
+        }
+        eprint_line_colored(msg, self.log_color);
+    }
+
+    /// Print an informational message (colored with info_color)
+    /// Suppressed when silent mode is enabled
+    pub fn info(&self, msg: &str) {
+        if self.silent {
+            return;
+        }
+        print_line_colored(msg, self.info_color);
+    }
+
+    /// Print an informational message to stderr (colored with info_color)
+    /// Suppressed when silent mode is enabled
+    pub fn einfo(&self, msg: &str) {
+        if self.silent {
+            return;
+        }
+        eprint_line_colored(msg, self.info_color);
+    }
+
+    /// Forward child process stdout (never suppressed, never colored)
+    pub fn forward_stdout(&self, line: &str) {
+        print_line(line);
+    }
+
+    /// Forward child process stderr (never suppressed, never colored)
+    pub fn forward_stderr(&self, line: &str) {
+        eprint_line(line);
+    }
+}
+
 /// Print a line to stdout with proper synchronization and raw mode support
 pub fn print_line(msg: &str) {
     let _guard = OUTPUT_LOCK.lock().unwrap();
