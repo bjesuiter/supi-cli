@@ -23,7 +23,10 @@ impl ProcessManager {
             anyhow::bail!("Process already running");
         }
 
-        println!("[supi] Starting process: {} {:?}", self.command, self.args);
+        println!(
+            "[supi] Starting child process: {} {:?}",
+            self.command, self.args
+        );
 
         let mut child = Command::new(&self.command)
             .args(&self.args)
@@ -75,7 +78,7 @@ impl ProcessManager {
     }
 
     pub async fn restart(&mut self) -> Result<()> {
-        println!("[supi] Restarting process...");
+        println!("[supi] Restarting child process...");
         self.shutdown().await?;
         self.spawn().await?;
         Ok(())
@@ -83,7 +86,7 @@ impl ProcessManager {
 
     pub async fn shutdown(&mut self) -> Result<()> {
         if let Some(mut child) = self.child.take() {
-            println!("[supi] Stopping process gracefully...");
+            println!("[supi] Stopping child process gracefully...");
 
             // Try graceful shutdown with SIGTERM first
             #[cfg(unix)]
@@ -98,14 +101,14 @@ impl ProcessManager {
                     // Wait up to 5 seconds for graceful exit
                     match timeout(Duration::from_secs(5), child.wait()).await {
                         Ok(Ok(_status)) => {
-                            println!("[supi] Process stopped gracefully");
+                            println!("[supi] Child process stopped gracefully");
                             return Ok(());
                         }
                         Ok(Err(e)) => {
-                            eprintln!("[supi] Error waiting for process: {}", e);
+                            eprintln!("[supi] Error waiting for child process: {}", e);
                         }
                         Err(_) => {
-                            println!("[supi] Process didn't stop gracefully, forcing...");
+                            println!("[supi] Child process didn't stop gracefully, forcing...");
                         }
                     }
                 }
@@ -114,7 +117,7 @@ impl ProcessManager {
             // Force kill if graceful shutdown failed or on non-Unix platforms
             child.kill().await.context("Failed to kill child process")?;
             let _ = child.wait().await;
-            println!("[supi] Process stopped");
+            println!("[supi] Child process stopped");
         }
         Ok(())
     }

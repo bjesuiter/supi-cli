@@ -4,8 +4,8 @@ use signal_hook::consts::signal::*;
 use signal_hook_tokio::Signals;
 
 pub enum SignalEvent {
-    Terminate, // SIGINT, SIGTERM, SIGQUIT
-    Restart,   // Configurable restart signal (e.g., SIGUSR1)
+    Terminate(String), // SIGINT, SIGTERM, SIGQUIT with signal name
+    Restart(String),   // Configurable restart signal (e.g., SIGUSR1) with signal name
 }
 
 pub struct SignalHandler {
@@ -27,8 +27,12 @@ impl SignalHandler {
     pub async fn next(&mut self) -> Option<SignalEvent> {
         if let Some(signal) = self.signals.next().await {
             match signal {
-                SIGINT | SIGTERM | SIGQUIT => Some(SignalEvent::Terminate),
-                SIGUSR1 | SIGUSR2 => Some(SignalEvent::Restart),
+                SIGINT => Some(SignalEvent::Terminate("SIGINT".to_string())),
+                SIGTERM => Some(SignalEvent::Terminate("SIGTERM".to_string())),
+                SIGQUIT => Some(SignalEvent::Terminate("SIGQUIT".to_string())),
+                SIGUSR1 => Some(SignalEvent::Restart("SIGUSR1".to_string())),
+                SIGUSR2 => Some(SignalEvent::Restart("SIGUSR2".to_string())),
+                SIGHUP => Some(SignalEvent::Restart("SIGHUP".to_string())),
                 _ => None,
             }
         } else {

@@ -146,7 +146,9 @@ fn test_sigterm_graceful_shutdown() {
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     // Should show graceful shutdown message
-    assert!(stdout.contains("Received termination signal") || stdout.contains("Stopping process"));
+    assert!(
+        stdout.contains("Received SIGTERM signal") || stdout.contains("Stopping child process")
+    );
     assert!(output.status.success());
 }
 
@@ -181,7 +183,7 @@ fn test_sigint_graceful_shutdown() {
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     // Should show graceful shutdown message
-    assert!(stdout.contains("Received termination signal") || stdout.contains("Stopping process"));
+    assert!(stdout.contains("Received SIGINT signal") || stdout.contains("Stopping child process"));
     assert!(output.status.success());
 }
 
@@ -228,7 +230,10 @@ fn test_restart_signal() {
     let stdout_str = String::from_utf8_lossy(&output.stdout);
 
     // Should see restart messages in stdout
-    assert!(stdout_str.contains("Received restart signal") || stdout_str.contains("Restarting"));
+    assert!(
+        stdout_str.contains("Received SIGUSR1 signal")
+            || stdout_str.contains("Restarting child process")
+    );
 }
 
 // Manual test: Create test.sh with: trap 'echo "Child got SIGTERM"; exit 0' TERM; echo "Started"; sleep 30
@@ -278,5 +283,5 @@ sleep 30
     let stdout_str = String::from_utf8_lossy(&output.stdout);
 
     // Should see both supervisor and child handling the signal
-    assert!(stdout_str.contains("Stopping process"));
+    assert!(stdout_str.contains("Stopping child process"));
 }

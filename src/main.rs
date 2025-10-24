@@ -15,10 +15,7 @@ async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
     println!("[supi] Supervisor PID: {}", std::process::id());
-    println!(
-        "[supi] Starting supervisor for: {} {:?}",
-        args.command, args.args
-    );
+    println!("[supi] Starting supervisor");
     println!(
         "[supi] Config: restart_signal={}, restart_hotkey={}, stop_on_child_exit={}",
         args.restart_signal, args.restart_hotkey, args.stop_on_child_exit
