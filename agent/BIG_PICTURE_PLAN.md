@@ -101,12 +101,12 @@ src/
 
 ### Phase 1: Basic Process Spawning
 
-- [ ] Set up Clap CLI argument parsing
-- [ ] Parse command and arguments
-- [ ] Spawn child process using tokio::process::Command
-- [ ] Forward stdout/stderr to parent's stdout/stderr
-- [ ] Wait for process to exit
-- [ ] Basic error handling
+- [x] Set up Clap CLI argument parsing
+- [x] Parse command and arguments
+- [x] Spawn child process using tokio::process::Command
+- [x] Forward stdout/stderr to parent's stdout/stderr
+- [x] Wait for process to exit
+- [x] Basic error handling
 
 ### Phase 2: Signal Handling
 
@@ -128,8 +128,8 @@ src/
 
 ### Phase 4: Advanced Features
 
-- [ ] Implement --stop-on-child-exit flag
-- [ ] Handle child process exit scenarios
+- [x] Implement --stop-on-child-exit flag
+- [x] Handle child process exit scenarios
 - [ ] Add restart debouncing (prevent rapid restarts)
 - [ ] Improve error messages and logging
 - [ ] Add process restart counter/statistics
