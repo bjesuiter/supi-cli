@@ -27,13 +27,17 @@ Add new session entry to `agent/PROGRESS.md`:
 or partial ❌ module/file - Not started
 
 ```
+### Tests Added (tests/filename.rs)
+- `test_name` - Description
+- `test_name` - Description
+
 ### Next Action
 Specific next steps:
 1. What to implement
 2. Where to implement it
 3. Key technical approach
 
-**Test with:** command to verify
+Add tests: `test_name`, `test_name`
 ```
 
 ## Keep it Short
@@ -42,35 +46,31 @@ Specific next steps:
 - Only status, what changed, what's next
 - 30-50 lines max per session
 
-## Test Commands Section
+## Integration Tests Section
 
-Maintain a "Test Commands Per Phase" section at the end of PROGRESS.md. For each
-completed phase, add specific test commands using `bx run`:
+For each phase, write integration tests in `tests/` directory. In PROGRESS.md,
+list applicable tests for each phase.
 
-**Include:**
+**Test Guidelines:**
 
-- Simple test (basic functionality)
-- Edge case test (stderr, flags, etc.)
-- Complex test (multi-line output, long-running)
-- Relevant bx shortcuts (bx dev, bx dev-sleep)
+- Use `assert_cmd` for CLI testing
+- Test files: `tests/cli_tests.rs`, `tests/signal_tests.rs`, etc.
+- Add tests as you implement features
+- Simple tests (basic functionality)
+- Edge cases (errors, flags, special scenarios)
+- Complex scenarios (multi-step, async behavior)
 
-**Mark future phases with:** `- TODO`
+**In Progress Reports:** List tests by name, grouped by phase:
 
-**Example test commands:**
+```markdown
+### Tests for Phase X
 
-```bash
-# Simple
-bx run echo "test"
-
-# Complex
-bx run bash -- -c 'for i in {1..5}; do echo $i; sleep 1; done'
-
-# With flags
-bx run --stop-on-child-exit echo "test"
-
-# Note: Don't use `bx run -- --help` (bonnie passes it as command)
-# Instead use: bx helpArg or cargo run -- --help
+- `test_feature_basic` - Basic functionality
+- `test_feature_with_flag` - Flag behavior
+- `test_feature_error_case` - Error handling
 ```
+
+Run tests: `bx test` or `bx test -- test_name`
 
 ## Example Entry
 
@@ -84,7 +84,6 @@ bx run --stop-on-child-exit echo "test"
 - ProcessManager spawns child with tokio::process::Command
 - Stdout/stderr forwarding working
 - Process cleanup on exit
-- Tested with echo and long-running processes
 
 **Next: Phase 3 (Signal Handling)**
 
@@ -95,11 +94,17 @@ bx run --stop-on-child-exit echo "test"
 basic run loop ⏸️ src/signals.rs - STUB
 
 ```
+### Tests Added (tests/cli_tests.rs)
+- `test_simple_echo` - Basic process spawning
+- `test_stdout_forwarding` - Multi-line output
+- `test_stderr_forwarding` - Error output
+- `test_stop_on_child_exit_flag` - Flag behavior
+
 ### Next Action
 Implement signal handlers:
 1. Add SIGINT/SIGTERM/SIGQUIT handlers using signal-hook-tokio
 2. Forward signals to child process
 3. Implement graceful shutdown with 5s timeout
 
-**Test with:** `bx dev-sleep` then Ctrl+C
+Add tests: `test_sigterm_graceful_shutdown`, `test_sigint_graceful_shutdown`
 ```

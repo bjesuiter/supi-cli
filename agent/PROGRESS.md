@@ -55,72 +55,38 @@ Update `src/supervisor.rs` to use tokio::select! for event loop.
 
 ---
 
-## Test Commands Per Phase
+## Integration Tests Per Phase
 
-### Phase 1 (CLI & Skeleton)
+Run tests: `bx test` or `bx test -- test_name`
 
-```bash
-# Test help output (use direct bonnie command)
-bx helpArg
+### Phase 1 (CLI & Skeleton) - tests/cli_tests.rs
 
-# Test version
-bx versionArg
+- `test_help_flag` - Verify --help shows usage
+- `test_version_flag` - Verify --version shows version
+- `test_version_flag_short` - Verify -V shows version
+- `test_missing_command_fails` - Verify error when no command provided
 
-# Or use cargo directly
-cargo run -- --help
-cargo run -- --version
+### Phase 2 (Basic Process Spawning) - tests/cli_tests.rs
 
-# Test basic argument parsing (shows stub error in Phase 1)
-bx run echo hello
-```
-
-### Phase 2 (Basic Process Spawning)
-
-```bash
-# Simple output test
-bx run echo "Hello World"
-
-# Multi-line time-delayed output
-bx run bash -- -c 'for i in {1..5}; do echo "tick $i"; sleep 0.5; done'
-
-# Test stdout and stderr forwarding
-bx run bash -- -c 'echo "stdout message" && echo "stderr message" >&2'
-
-# Test --stop-on-child-exit flag
-bx run --stop-on-child-exit echo "Testing stop flag"
-
-# Use bonnie shortcut
-bx dev
-```
+- `test_simple_echo` - Basic process spawning and output
+- `test_stop_on_child_exit_flag` - Verify --stop-on-child-exit behavior
+- `test_nonexistent_command` - Verify error on invalid command
+- `test_stdout_forwarding` - Multi-line stdout forwarding
+- `test_stderr_forwarding` - Stderr forwarding
 
 ### Phase 3 (Signal Handling) - TODO
 
-```bash
-# Test graceful shutdown with Ctrl+C
-bx run bash -- -c 'while true; do echo tick; sleep 1; done'
-# Then press Ctrl+C
-
-# Test restart signal (in another terminal)
-kill -SIGUSR1 $(pgrep -f "supi-cli")
-
-# Use bonnie shortcut for long-running process
-bx dev-sleep
-```
+- `test_sigterm_graceful_shutdown` - SIGTERM handling
+- `test_sigint_graceful_shutdown` - SIGINT (Ctrl+C) handling
+- `test_restart_signal` - SIGUSR1 restart signal
+- `test_signal_forwarding_to_child` - Forward signals to child
 
 ### Phase 4 (Interactive Hotkey) - TODO
 
-```bash
-# Test restart with 'r' key
-bx run bash -- -c 'while true; do echo tick; sleep 1; done'
-# Then press 'r' to restart
-
-# Test custom hotkey
-bx run --restart-hotkey R bash -- -c 'while true; do echo tick; sleep 1; done'
-```
+- `test_hotkey_restart` - 'r' key restart trigger
+- `test_custom_hotkey` - Custom hotkey character
 
 ### Phase 5 (Advanced Features) - TODO
 
-```bash
-# Test all features together
-bx run --restart-signal SIGUSR2 --restart-hotkey R bash -- -c 'echo "Running PID: $$"; sleep 10'
-```
+- `test_rapid_restarts_debounce` - Restart debouncing
+- `test_custom_restart_signal` - Custom signal configuration
