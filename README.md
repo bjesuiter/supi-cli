@@ -134,6 +134,12 @@ cargo install --path .
 - Unix-like operating system (Linux, macOS)
 - Rust 1.86 or higher
 
+## Development
+
+This repository uses [bonnie/bx cli](https://github.com/codemonument/bx) as a
+task runner. `bx` is a custom fork of bonnie with a shorter CLI name for
+convenience.
+
 ## Distribution Targets
 
 Pre-built binaries are available for:
