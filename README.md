@@ -3,6 +3,8 @@
 A lightweight CLI tool for supervising and managing arbitrary processes with
 easy restart capabilities.
 
+[![Crates.io Version](https://img.shields.io/crates/v/supi-cli)](https://crates.io/crates/supi-cli)
+
 ## Overview
 
 `supi` is a simple process supervisor that spawns and manages child processes.
