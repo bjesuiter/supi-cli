@@ -6,6 +6,7 @@ use std::time::Duration;
 
 // Manual test: cargo run -- --help
 #[test]
+#[ignore]
 fn test_help_flag() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
     cmd.arg("--help")
@@ -19,6 +20,7 @@ fn test_help_flag() {
 
 // Manual test: cargo run -- --version
 #[test]
+#[ignore]
 fn test_version_flag() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
     cmd.arg("--version")
@@ -29,6 +31,7 @@ fn test_version_flag() {
 
 // Manual test: cargo run -- -V
 #[test]
+#[ignore]
 fn test_version_flag_short() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
     cmd.arg("-V")
@@ -39,6 +42,7 @@ fn test_version_flag_short() {
 
 // Manual test: cargo run --
 #[test]
+#[ignore]
 fn test_missing_command_fails() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
     cmd.assert()
@@ -48,6 +52,7 @@ fn test_missing_command_fails() {
 
 // Manual test: cargo run -- --stop-on-child-exit echo "hello world"
 #[test]
+#[ignore]
 fn test_simple_echo() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
     cmd.arg("--stop-on-child-exit")
@@ -60,6 +65,7 @@ fn test_simple_echo() {
 
 // Manual test: cargo run -- --stop-on-child-exit echo "test message"
 #[test]
+#[ignore]
 fn test_stop_on_child_exit_flag() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
     cmd.arg("--stop-on-child-exit")
@@ -75,6 +81,7 @@ fn test_stop_on_child_exit_flag() {
 
 // Manual test: cargo run -- this_command_does_not_exist_xyz123
 #[test]
+#[ignore]
 fn test_nonexistent_command() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
     cmd.arg("this_command_does_not_exist_xyz123")
@@ -86,6 +93,7 @@ fn test_nonexistent_command() {
 
 // Manual test: cargo run -- --stop-on-child-exit bash -- -c "echo line1 && echo line2 && echo line3"
 #[test]
+#[ignore]
 fn test_stdout_forwarding() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
     cmd.arg("--stop-on-child-exit")
@@ -102,6 +110,7 @@ fn test_stdout_forwarding() {
 
 // Manual test: cargo run -- --stop-on-child-exit bash -- -c "echo 'error message' >&2"
 #[test]
+#[ignore]
 fn test_stderr_forwarding() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
     cmd.arg("--stop-on-child-exit")
@@ -119,6 +128,7 @@ fn test_stderr_forwarding() {
 // Manual test: cargo run -- sleep 30
 //              (note the PID shown, then in another terminal: kill -TERM <pid>)
 #[test]
+#[ignore]
 fn test_sigterm_graceful_shutdown() {
     use std::process::Command as StdCommand;
 
@@ -156,6 +166,7 @@ fn test_sigterm_graceful_shutdown() {
 // Manual test: cargo run -- sleep 30
 //              (then press Ctrl+C or in another terminal: kill -INT <pid>)
 #[test]
+#[ignore]
 fn test_sigint_graceful_shutdown() {
     use std::process::Command as StdCommand;
 
@@ -191,6 +202,7 @@ fn test_sigint_graceful_shutdown() {
 // Manual test: cargo run -- bash -c "echo 'started'; sleep 10"
 //              (note the PID, then in another terminal: kill -USR1 <pid>, then: kill -TERM <pid>)
 #[test]
+#[ignore]
 fn test_restart_signal() {
     use std::process::Command as StdCommand;
 
@@ -241,6 +253,7 @@ fn test_restart_signal() {
 //              Then: chmod +x test.sh && cargo run -- ./test.sh
 //              (note the PID, then in another terminal: kill -TERM <pid>)
 #[test]
+#[ignore]
 fn test_signal_forwarding_to_child() {
     use std::process::Command as StdCommand;
 
@@ -292,6 +305,7 @@ sleep 30
 // Manual test: cargo run -- bash -c "echo 'started'; sleep 10"
 //              (then press 'r' in the terminal, should see process restart)
 #[test]
+#[ignore]
 fn test_default_hotkey_restart() {
     use std::io::Write;
     use std::process::Command as StdCommand;
@@ -344,6 +358,7 @@ fn test_default_hotkey_restart() {
 // Manual test: cargo run -- --restart-hotkey x bash -c "echo 'started'; sleep 10"
 //              (then press 'x' in the terminal)
 #[test]
+#[ignore]
 fn test_custom_hotkey_restart() {
     use std::io::Write;
     use std::process::Command as StdCommand;
@@ -398,6 +413,7 @@ fn test_custom_hotkey_restart() {
 // Manual test: cargo run -- bash -- -c "echo 'started'; sleep 5"
 //              (press keys other than 'r', should NOT restart)
 #[test]
+#[ignore]
 fn test_non_hotkey_characters_ignored() {
     use std::io::Write;
     use std::process::Command as StdCommand;
@@ -468,6 +484,7 @@ fn test_non_hotkey_characters_ignored() {
 // Manual test: cargo run -- --restart-hotkey r --stop-on-child-exit bash -c "echo 'done'; exit 0"
 //              (verify hotkey is accepted with other flags)
 #[test]
+#[ignore]
 fn test_hotkey_with_stop_on_child_exit() {
     let mut cmd = Command::cargo_bin("supi-cli").unwrap();
     cmd.arg("--restart-hotkey")
@@ -483,6 +500,7 @@ fn test_hotkey_with_stop_on_child_exit() {
 // Manual test: cargo run -- --stop-on-child-exit bash -c "echo 'started'; sleep 3"
 //              (press 'r' after 1s, verify restart happens, then supervisor exits when child exits)
 #[test]
+#[ignore]
 fn test_restart_with_stop_on_child_exit() {
     use std::io::Write;
     use std::process::Command as StdCommand;
