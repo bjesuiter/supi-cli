@@ -6,6 +6,57 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2025-10-24
+
+### Added
+
+- Published to crates.io - first stable release! 🎉
+- Complete CLI documentation in README for all 7 command-line flags
+- Publishing workflow automation via `bx dry` command
+- Publishing guide for maintainers in README
+- Comprehensive installation instructions with crates.io as primary method
+
+### Changed
+
+- **Binary name changed from `supi-cli` to `supi`** for cleaner command-line
+  usage
+- CLI output now shows `supi` instead of `supi-cli` in version and help
+- Edition changed from 2024 to 2021 for broader Rust version compatibility
+  (1.56+)
+- Test version assertions now dynamically read from `CARGO_PKG_VERSION`
+- Updated all test files to reference `supi` binary name
+
+### Fixed
+
+- Tests no longer hardcode version numbers - automatically sync with Cargo.toml
+
+### Package Metadata
+
+- Added homepage, readme, and exclude fields to Cargo.toml for crates.io
+- Excluded development files (agent/, AGENT.md, bonnie.toml) from package
+- Binary explicitly named "supi" via `[[bin]]` section
+
+### Documentation
+
+- Complete documentation of all CLI flags in README:
+  - `--stop-on-child-exit`
+  - `--restart-signal`
+  - `--restart-hotkey`
+  - `--restart-debounce-ms`
+  - `--log-color`
+  - `--info-color`
+  - `--silent`
+- Added publishing information section for maintainers
+- Updated development information section
+
+### Technical
+
+- Package size: 22 files, ~30KB compressed
+- All 34 tests passing with new binary name
+- Ready for `cargo install --locked supi-cli`
+
+[1.0.0]: https://github.com/bjesuiter/supi-cli/releases/tag/v1.0.0
+
 ## [0.2.0] - 2025-10-24
 
 ### Added
