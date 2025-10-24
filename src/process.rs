@@ -2,7 +2,7 @@ use crate::output::Output;
 use anyhow::{Context, Result};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
-use tokio::time::{Duration, timeout};
+use tokio::time::{timeout, Duration};
 
 pub struct ProcessManager {
     command: String,
@@ -36,6 +36,7 @@ impl ProcessManager {
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .kill_on_drop(true)
+            .process_group(0) // Create new process group
             .spawn()
             .context("Failed to spawn child process")?;
 
@@ -104,12 +105,13 @@ impl ProcessManager {
             // Try graceful shutdown with SIGTERM first
             #[cfg(unix)]
             {
-                use nix::sys::signal::{Signal, kill};
+                use nix::sys::signal::{kill, Signal};
                 use nix::unistd::Pid;
 
                 if let Some(pid) = child.id() {
-                    // Send SIGTERM for graceful shutdown
-                    let _ = kill(Pid::from_raw(pid as i32), Signal::SIGTERM);
+                    // Send SIGTERM to entire process group for graceful shutdown
+                    // Negative PID targets the process group
+                    let _ = kill(Pid::from_raw(-(pid as i32)), Signal::SIGTERM);
 
                     // Wait up to 5 seconds for graceful exit
                     match timeout(Duration::from_secs(5), child.wait()).await {
@@ -124,6 +126,8 @@ impl ProcessManager {
                         Err(_) => {
                             self.output
                                 .log("[supi] Child process didn't stop gracefully, forcing...");
+                            // Force kill the entire process group
+                            let _ = kill(Pid::from_raw(-(pid as i32)), Signal::SIGKILL);
                         }
                     }
                 }

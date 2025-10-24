@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Process tree cleanup**: Child processes spawned by the supervised command
+  (e.g., `bash -c "npm run build && npm run dev"`) are now properly killed when
+  the supervisor shuts down or restarts
+  - Processes are now spawned in their own process group using
+    `.process_group(0)`
+  - Signals (SIGTERM/SIGKILL) are sent to the entire process group instead of
+    just the direct child
+  - This ensures that shell commands with child processes are completely
+    terminated
+
 ## [1.0.0] - 2025-10-24
 
 ### Added
