@@ -3,6 +3,7 @@ use crate::output::Output;
 use crate::process::ProcessManager;
 use crate::signals::{SignalEvent, SignalHandler};
 use anyhow::Result;
+use tokio::time::Instant;
 
 pub struct Supervisor {
     process_manager: ProcessManager,
@@ -12,6 +13,8 @@ pub struct Supervisor {
     restart_signal: String,
     restart_hotkey: char,
     output: Output,
+    debounce_ms: u64,
+    last_restart: Option<Instant>,
 }
 
 impl Supervisor {
@@ -23,6 +26,7 @@ impl Supervisor {
         restart_signal: String,
         restart_hotkey: char,
         output: Output,
+        debounce_ms: u64,
     ) -> Self {
         Self {
             process_manager,
@@ -32,7 +36,36 @@ impl Supervisor {
             restart_signal,
             restart_hotkey,
             output,
+            debounce_ms,
+            last_restart: None,
         }
+    }
+
+    /// Check if restart should be allowed based on debounce settings.
+    /// Returns true if restart is allowed, false if debounced.
+    fn should_allow_restart(&mut self) -> bool {
+        if self.debounce_ms == 0 {
+            // Debouncing disabled
+            return true;
+        }
+
+        let now = Instant::now();
+
+        if let Some(last) = self.last_restart {
+            let elapsed = now.duration_since(last).as_millis() as u64;
+            if elapsed < self.debounce_ms {
+                let remaining = self.debounce_ms - elapsed;
+                self.output.log(&format!(
+                    "[supi] Restart request ignored (debounce active, {}ms remaining)",
+                    remaining
+                ));
+                return false;
+            }
+        }
+
+        // Update last restart time
+        self.last_restart = Some(now);
+        true
     }
 
     pub async fn run(&mut self) -> Result<()> {
@@ -62,6 +95,11 @@ impl Supervisor {
                         }
                         SignalEvent::Restart(signal_name) => {
                             self.output.log(&format!("[supi] Received {} signal", signal_name));
+
+                            if !self.should_allow_restart() {
+                                continue; // Skip restart due to debounce
+                            }
+
                             if self.process_manager.is_running() {
                                 self.process_manager.restart().await?;
                             } else {
@@ -80,6 +118,11 @@ impl Supervisor {
                     }
                 } => {
                     self.output.log("[supi] Hotkey pressed, restarting...");
+
+                    if !self.should_allow_restart() {
+                        continue; // Skip restart due to debounce
+                    }
+
                     if self.process_manager.is_running() {
                         self.process_manager.restart().await?;
                     } else {

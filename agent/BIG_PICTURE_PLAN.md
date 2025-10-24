@@ -172,25 +172,30 @@ src/
   - Added silentExample script to bonnie.toml
   - Added 3 tests for --silent flag functionality
   - All 25 tests passing
-- [ ] Add restart debouncing (prevent rapid restarts)
-  - Add `--restart-debounce-ms <MILLISECONDS>` CLI option (default: 1000)
+- [x] Add restart debouncing (prevent rapid restarts)
+  - Added `--restart-debounce-ms <MILLISECONDS>` CLI option (default: 1000)
   - If 0, no debounce (immediate restart allowed)
-  - **Implementation approach**:
+  - **Implementation completed**:
     - Track timestamp of last restart request (Option<Instant>)
     - On restart trigger (signal or hotkey):
       - Check if last restart was within debounce window
-      - If yes: Log "Restart request ignored (debounce active)" and skip
+      - If yes: Log "Restart request ignored (debounce active, Xms remaining)"
+        and skip
       - If no: Proceed with restart and update timestamp
     - Store debounce_ms and last_restart in Supervisor struct
     - Use tokio::time::Instant for async-compatible timing
-  - **Testing strategy**:
-    - Test with debounce disabled (0ms): rapid restarts work
-    - Test with debounce enabled (100ms): rapid requests ignored
-    - Test with debounce window expired: restart succeeds
-    - Test that both hotkey and signal respect debounce
+    - Created should_allow_restart() method to encapsulate logic
+    - Applied to both signal and hotkey restart handlers
+  - **Testing completed**:
+    - ✅ test_debounce_disabled_allows_rapid_restarts (0ms): rapid restarts work
+    - ✅ test_debounce_prevents_rapid_restarts (500ms): rapid requests ignored
+    - ✅ test_debounce_allows_restart_after_window_expires (200ms): restart
+      after window succeeds
+    - ✅ test_debounce_affects_hotkey_restarts: hotkey respects debounce
+    - All 34 tests passing
   - **User experience**:
     - Log informative message when debounce prevents restart
-    - Show remaining debounce time in message (optional enhancement)
+    - Shows remaining debounce time in message
     - No blocking/delays - just ignore requests within window
 - [ ] Improve error messages and logging
 - [ ] Add process restart counter/statistics

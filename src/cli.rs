@@ -31,6 +31,10 @@ pub struct Cli {
     #[arg(long)]
     pub silent: bool,
 
+    /// Restart debounce time in milliseconds (default: 1000). Set to 0 to disable debouncing.
+    #[arg(long, default_value = "1000")]
+    pub restart_debounce_ms: u64,
+
     /// Command to run
     #[arg(required = true)]
     pub command: String,

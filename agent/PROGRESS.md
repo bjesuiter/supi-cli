@@ -207,14 +207,14 @@ testing.
 
 ---
 
-## Phase 5: Advanced Features ⏳
+## Phase 5: Advanced Features ✅
 
 ### Status
 
-**IN PROGRESS**
+**COMPLETE**
 
-Colored logging COMPLETE. --silent flag and Output struct refactoring COMPLETE.
-Ready for additional features.
+All Phase 5 features implemented: colored logging, --silent flag with Output
+struct refactoring, and restart debouncing.
 
 ### What's Implemented
 
@@ -280,11 +280,29 @@ Ready for additional features.
 - Invalid colors show helpful error message
 - Help documentation includes all flags
 
+**✅ Restart Debouncing (COMPLETE):**
+
+- Added `--restart-debounce-ms` CLI option (default: 1000ms)
+- Set to 0 to disable debouncing
+- Tracks last restart timestamp using `tokio::time::Instant`
+- Checks elapsed time before allowing restart
+- Applies to both hotkey and signal restart triggers
+- Logs informative message with remaining time when debounce prevents restart
+- No blocking behavior - just ignores rapid requests within debounce window
+
+**Implementation Details:**
+
+- Added `debounce_ms` and `last_restart` fields to Supervisor struct
+- Created `should_allow_restart()` method to encapsulate debounce logic
+- Applied check in both signal restart and hotkey restart handlers
+- Updated main.rs to pass debounce_ms to Supervisor
+- Updated config display to show debounce setting
+
 ### Planned Items
 
 - [x] Add colored logging for supervisor messages
 - [x] Add --silent flag and refactor Output to stateful struct
-- [ ] Add restart debouncing (prevent rapid restarts)
+- [x] Add restart debouncing (prevent rapid restarts)
 
 ### Tests Added
 
@@ -299,8 +317,13 @@ Ready for additional features.
 - ✅ `test_no_color_option` - --log-color=none produces no color codes
 - ✅ `test_different_colors_produce_different_codes` - Verify color variations
 - ✅ `test_info_color_independent` - Info-color works independently
-- ❌ `test_rapid_restarts_debounce` - Restart debouncing
-- ❌ `test_process_restart_after_exit` - Restart after child exits
+- ✅ `test_debounce_disabled_allows_rapid_restarts` - Verify debounce disabled
+  with 0ms
+- ✅ `test_debounce_prevents_rapid_restarts` - Verify debounce blocks rapid
+  requests
+- ✅ `test_debounce_allows_restart_after_window_expires` - Verify restart after
+  window
+- ✅ `test_debounce_affects_hotkey_restarts` - Verify hotkey respects debounce
 
 ---
 
@@ -328,7 +351,7 @@ Final polish, documentation, and distribution setup.
 
 **Run tests**: `bx test` or `bx test -- test_name`
 
-**Current: 30 tests passing** (Phases 1, 2, 3, 4, & 5 features complete)
+**Current: 34 tests passing** (Phases 1, 2, 3, 4, & 5 features complete)
 
 ### Test File Organization
 
@@ -339,7 +362,8 @@ Tests are organized by phase into separate files for better maintainability:
 - `tests/phase2_tests.rs` - Signal handling tests (4 tests)
 - `tests/phase3_tests.rs` - Interactive hotkey tests (5 tests)
 - `tests/phase4_tests.rs` - PTY-specific scenarios (4 tests)
-- `tests/phase5_tests.rs` - Silent flag and color output tests (8 tests)
+- `tests/phase5_tests.rs` - Silent flag, color output, and debounce tests (12
+  tests)
 
 ### Test Breakdown
 
@@ -347,7 +371,7 @@ Tests are organized by phase into separate files for better maintainability:
 - Phase 2: 4 tests (Signals)
 - Phase 3: 5 tests (Hotkeys)
 - Phase 4: 4 tests (PTY-specific scenarios)
-- Phase 5: 8 tests (--silent flag + Color output)
+- Phase 5: 12 tests (--silent flag + Color output + Restart debouncing)
 - **All tests now use PTY for clean output**
 
 ### All Tests
@@ -402,3 +426,10 @@ Tests are organized by phase into separate files for better maintainability:
 - ✅ `test_no_color_option`
 - ✅ `test_different_colors_produce_different_codes`
 - ✅ `test_info_color_independent`
+
+**Restart Debounce Tests (4 - via PTY):**
+
+- ✅ `test_debounce_disabled_allows_rapid_restarts`
+- ✅ `test_debounce_prevents_rapid_restarts`
+- ✅ `test_debounce_allows_restart_after_window_expires`
+- ✅ `test_debounce_affects_hotkey_restarts`

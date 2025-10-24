@@ -25,8 +25,8 @@ async fn main() -> anyhow::Result<()> {
     output.log(&format!("[supi] Supervisor PID: {}", std::process::id()));
     output.log("[supi] Starting supervisor");
     output.log(&format!(
-        "[supi] Config: restart_signal={}, restart_hotkey='{}', stop_on_child_exit={}",
-        args.restart_signal, args.restart_hotkey, args.stop_on_child_exit
+        "[supi] Config: restart_signal={}, restart_hotkey='{}', stop_on_child_exit={}, restart_debounce_ms={}",
+        args.restart_signal, args.restart_hotkey, args.stop_on_child_exit, args.restart_debounce_ms
     ));
 
     let process_manager = ProcessManager::new(args.command, args.args, output.clone());
@@ -53,6 +53,7 @@ async fn main() -> anyhow::Result<()> {
         args.restart_signal,
         args.restart_hotkey,
         output,
+        args.restart_debounce_ms,
     );
 
     supervisor.run().await?;
