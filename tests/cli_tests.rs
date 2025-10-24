@@ -478,3 +478,63 @@ fn test_hotkey_with_stop_on_child_exit() {
         .success()
         .stdout(predicate::str::contains("test output"));
 }
+
+// Manual test: cargo run -- --stop-on-child-exit bash -c "echo 'started'; sleep 3"
+//              (press 'r' after 1s, verify restart happens, then supervisor exits when child exits)
+#[test]
+fn test_restart_with_stop_on_child_exit() {
+    use std::io::Write;
+    use std::process::Command as StdCommand;
+
+    // Use a command that runs for a short time, so we can observe it exit naturally after restart
+    let mut child = StdCommand::new(env!("CARGO_BIN_EXE_supi-cli"))
+        .arg("--stop-on-child-exit")
+        .arg("--")
+        .arg("bash")
+        .arg("-c")
+        .arg("echo 'Process started'; sleep 3")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn supi-cli");
+
+    // Give it time to start
+    std::thread::sleep(Duration::from_secs(1));
+
+    // Send 'r' to stdin to trigger restart while child is still running
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(b"r").unwrap();
+        stdin.flush().unwrap();
+    }
+
+    // Wait for the restarted child to complete naturally (3s + buffer)
+    std::thread::sleep(Duration::from_secs(4));
+
+    // The supervisor should have exited on its own due to --stop-on-child-exit
+    let output = child.wait_with_output().expect("Failed to wait for child");
+    let stdout_str = String::from_utf8_lossy(&output.stdout);
+
+    // Verify restart happened: should see "started" twice (initial + restart)
+    let started_count = stdout_str.matches("Process started").count();
+    assert!(
+        started_count >= 2,
+        "Expected at least 2 'Process started' messages (restart happened), got {}. Output:\n{}",
+        started_count,
+        stdout_str
+    );
+
+    // Verify supervisor exited when child naturally exited (success exit code)
+    assert!(
+        output.status.success(),
+        "Supervisor should exit successfully when child exits naturally. Exit status: {}",
+        output.status
+    );
+
+    // Verify the --stop-on-child-exit message appears
+    assert!(
+        stdout_str.contains("Exiting (--stop-on-child-exit is set)"),
+        "Should see --stop-on-child-exit exit message. Output:\n{}",
+        stdout_str
+    );
+}
