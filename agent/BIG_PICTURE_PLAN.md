@@ -167,6 +167,33 @@ src/
 - [ ] Display mode indicator (e.g., "-- INSERT --" or "-- NORMAL --")
 - [ ] Smooth mode transitions without disrupting child process
 
+### Phase 7: Optional TUI Mode (Future Enhancement)
+
+- [ ] Add `--tui` flag to enable TUI mode (default: disabled)
+- [ ] **Library**: `ratatui` (formerly tui-rs) for terminal UI
+- [ ] **Features when enabled**:
+  - Status bar showing process state, uptime, restart count
+  - Scrollable output buffer for child stdout/stderr
+  - Help panel showing available hotkeys
+  - Visual indicators for process state (running/stopped/restarting)
+  - Cleaner test output (no raw mode artifacts)
+- [ ] **Design considerations**:
+  - Keep default mode simple (current passthrough behavior)
+  - TUI mode as opt-in for users who want enhanced UI
+  - Preserve all core functionality in both modes
+  - Add `--tui-refresh-rate` for customizable UI updates
+- [ ] **Layout structure**:
+  - Top: Status bar (process name, state, PID, uptime, restarts)
+  - Middle: Scrollable output panel (child stdout/stderr)
+  - Bottom: Help bar (hotkeys and commands)
+- [ ] **Testing strategy**:
+  - Conditional test compilation for TUI mode
+  - Test both TUI and non-TUI modes
+  - Mock terminal for TUI rendering tests
+- [ ] **Dependencies addition**:
+  - `ratatui = "0.26"` (or latest)
+  - `crossterm` (already in use)
+
 ## Key Technical Challenges
 
 ### Challenge 1: Concurrent Event Handling
@@ -218,6 +245,19 @@ forwarding) **Solution**:
 - Display visual indicator of current mode
 - Handle ESC key detection in insert mode to return to normal
 - Ensure smooth transitions without disrupting child output
+
+### Challenge 7: TUI Mode Integration (Phase 7)
+
+**Problem**: Manage TUI rendering while forwarding child output in real-time
+**Solution**:
+
+- Buffer child output in scrollable widget
+- Separate render loop from output forwarding
+- Handle terminal resize events gracefully
+- Preserve raw terminal state across mode switches
+- Maintain responsive UI with high-frequency child output
+- Balance UI refresh rate with CPU usage
+- Clean TUI teardown on exit or panic
 
 ## Testing Strategy
 
@@ -299,8 +339,9 @@ cargo build --release --target x86_64-unknown-linux-musl
 - **Phase 4**: 1-2 hours
 - **Phase 5**: 2-3 hours
 - **Phase 6**: 3-4 hours (future enhancement)
-- **Total**: ~10-15 hours for core implementation, ~13-19 hours with interactive
-  mode
+- **Phase 7**: 3-5 hours (future enhancement)
+- **Total**: ~10-15 hours for core implementation (Phases 1-5)
+- **With enhancements**: ~16-24 hours (includes Phases 6 and/or 7)
 
 ## Success Criteria
 
