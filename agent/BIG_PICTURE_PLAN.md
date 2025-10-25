@@ -36,6 +36,130 @@ for user-facing roadmap.
 - **Phase 8:** Vim-style interactive mode (stdin forwarding)
 - **Phase 9:** Optional TUI mode with ratatui
 
+## Module Architecture
+
+### Core Components
+
+**1. CLI Argument Parsing (`src/cli.rs`)**
+
+- Library: `clap` v4 with derive macros
+- Parses command and args, handles flags
+- Key flags: `--stop-on-child-exit`, `--restart-signal`, `--restart-hotkey`,
+  `--restart-debounce-ms`, `--silent`, `--log-color`, `--info-color`
+
+**2. Process Management (`src/process.rs`)**
+
+- Library: `tokio` with process feature
+- Spawns child process, captures/forwards stdout/stderr
+- Tracks process state, handles graceful termination
+- Restart capability with configurable debouncing
+
+**3. Signal Handling (`src/signals.rs`)**
+
+- Library: `tokio::signal` for Unix signals
+- Handles: SIGTERM, SIGINT, SIGQUIT (graceful shutdown)
+- Configurable restart signal (default: SIGUSR1)
+- Forwards signals to child, timeout-based force kill
+
+**4. Terminal Input (`src/hotkey.rs`)**
+
+- Library: `crossterm` for terminal manipulation
+- Raw mode for single keystroke capture
+- Non-blocking input with RAII cleanup
+- Configurable restart hotkey (default: 'r')
+
+**5. Output Management (`src/output.rs`)**
+
+- Stateful `Output` struct for colored, suppressible logging
+- Separate colors for logs vs info messages
+- Silent mode (suppress supervisor logs, keep child output)
+- Thread-safe with internal mutex
+
+**6. Supervisor (`src/supervisor.rs`)**
+
+- Main event loop using `tokio::select!`
+- Coordinates signals, hotkeys, process I/O
+- Restart debouncing logic
+- Graceful shutdown coordination
+
+### Module Structure
+
+```
+src/
+├── main.rs           - Entry point, CLI setup, main loop
+├── cli.rs            - Clap CLI argument definitions
+├── process.rs        - Process spawning and management
+├── signals.rs        - Signal handling setup
+├── hotkey.rs         - Terminal input and hotkey detection
+├── output.rs         - Colored, stateful output management
+└── supervisor.rs     - Main supervisor coordination logic
+```
+
+### Error Handling Strategy
+
+- Use `anyhow` for application-level errors with context
+- Use `Result<T>` throughout for proper error propagation
+- Provide helpful error messages for:
+  - Command not found
+  - Permission denied
+  - Invalid signal names
+  - Terminal access issues
+
+### Testing Strategy
+
+**Unit Tests:**
+
+- CLI argument parsing edge cases
+- Signal name validation
+- Hotkey character validation
+
+**Integration Tests (via PTY):**
+
+- All 34 tests use `portable-pty` for realistic terminal behavior
+- Tests organized by phase in separate files (`tests/cli_phase1_tests.rs`
+  through `cli_phase5_tests.rs`)
+- Bug-specific test files with descriptive names (e.g.,
+  `cli_bugfix_process_group_cleanup.rs`)
+- Clean test output without raw mode artifacts
+- Coverage: process spawning, signals, hotkeys, output forwarding, debouncing
+
+**Manual Testing:**
+
+- Long-running processes
+- Processes that exit immediately
+- Continuous output
+- Stubborn processes ignoring SIGTERM
+- Rapid restart requests (debouncing)
+
+### Dependencies
+
+See [../Cargo.toml](../Cargo.toml) for full dependency list.
+
+**Production Dependencies:**
+
+- `clap` v4 (with derive) - CLI argument parsing
+- `tokio` v1.40 (full features) - Async runtime and process management
+- `tokio-util` v0.7 (io features) - Additional tokio utilities
+- `crossterm` v0.28 - Terminal manipulation for hotkey and colored output
+- `signal-hook` v0.3 - Signal handling foundation
+- `signal-hook-tokio` v0.3 (futures-v0_3) - Async Unix signal handling
+- `anyhow` v1.0 - Application-level error handling with context
+
+**Dev Dependencies:**
+
+- `assert_cmd` - Integration test command execution
+- `predicates` - Assertions for test output
+- `portable-pty` v0.8 - PTY emulation for realistic terminal testing
+
+### Platform Support
+
+**Target Platforms:**
+
+- macOS (Apple Silicon, no Intel support)
+- Linux (glibc & musl)
+
+**Limitation:** Unix-only (signals not available on Windows)
+
 ## Key Technical Challenges
 
 ### Challenge 1: Concurrent Event Handling ✅ SOLVED
