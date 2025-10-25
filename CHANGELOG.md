@@ -8,6 +8,10 @@ and this project adheres to
 
 ## [Unreleased]
 
+- Nothing right now
+
+## [1.0.1] - 2025-10-25
+
 ### Fixed
 
 - **Process tree cleanup**: Child processes spawned by supervised commands
@@ -28,6 +32,7 @@ and this project adheres to
   usage
 - Improved Rust version compatibility (supports 1.56+)
 
+[1.0.1]: https://github.com/bjesuiter/supi-cli/releases/tag/v1.0.1
 [1.0.0]: https://github.com/bjesuiter/supi-cli/releases/tag/v1.0.0
 
 ## [0.2.0] - 2025-10-24
