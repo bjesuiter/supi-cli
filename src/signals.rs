@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
-use futures::stream::StreamExt;
 use signal_hook::consts::signal::*;
 use signal_hook_tokio::Signals;
+use tokio_stream::StreamExt;
 
 pub enum SignalEvent {
     Terminate(String), // SIGINT, SIGTERM, SIGQUIT with signal name

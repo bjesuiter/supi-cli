@@ -113,7 +113,8 @@ See [Cargo.toml](../Cargo.toml) for the complete dependency list with versions.
 
 **Key Dependencies:**
 
-- **CLI & Async:** `clap` (argument parsing), `tokio` (async runtime), `futures`
+- **CLI & Async:** `clap` (argument parsing), `tokio` (async runtime),
+  `tokio-stream`
 - **Terminal:** `crossterm` (raw mode, colors, events), `nix` (Unix signals)
 - **Signals:** `signal-hook`, `signal-hook-tokio` (async signal handling)
 - **Testing:** `assert_cmd`, `predicates`, `portable-pty` (PTY-based integration

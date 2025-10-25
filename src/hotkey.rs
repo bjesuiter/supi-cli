@@ -3,10 +3,10 @@ use crossterm::{
     event::{Event, EventStream, KeyCode, KeyEvent, KeyModifiers},
     terminal::{disable_raw_mode, enable_raw_mode},
 };
-use futures::StreamExt;
 use nix::sys::signal::{self, Signal};
 use nix::unistd::Pid;
 use tokio::sync::mpsc;
+use tokio_stream::StreamExt;
 
 /// Hotkey event emitted when the configured key is pressed
 #[derive(Debug, Clone, Copy)]
