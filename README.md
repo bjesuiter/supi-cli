@@ -83,6 +83,10 @@ supi --stop-on-child-exit ./my-script.sh
 
 TODO: Add example
 
+## Example: supi + zellij (a rust terminal multiplexer, like tmux)
+
+TODO: Add example
+
 ## Command Line Options
 
 ### `--stop-on-child-exit`
