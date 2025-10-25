@@ -174,12 +174,20 @@ echo "All children completed"
 fn test_process_group_cleanup_on_restart() {
     let (pair, output, reader_thread) = create_pty_with_reader();
 
-    // Create a script that spawns child processes
+    // Create a script that spawns multiple child processes
+    // This simulates the real-world case of `bash -c "npm run build && npm run dev"`
     let script = r#"#!/bin/bash
-echo "Process starting (PID: $$)"
+echo "Parent bash starting (PID: $$)"
+# Spawn background sleep processes to simulate child commands
 sleep 30 &
-echo "Spawned child (PID: $!)"
+CHILD1=$!
+echo "Spawned child 1 (PID: $CHILD1)"
+sleep 30 &
+CHILD2=$!
+echo "Spawned child 2 (PID: $CHILD2)"
+# Wait for all children
 wait
+echo "All children completed"
 "#;
 
     let temp_file = tempfile::NamedTempFile::new().unwrap();
@@ -238,6 +246,16 @@ wait
         }
     };
 
+    #[cfg(unix)]
+    {
+        // Verify that child processes were spawned
+        assert!(first_bash_pid.is_some(), "Bash process should be running");
+        assert!(
+            !first_sleep_pids.is_empty(),
+            "Sleep child processes should be running"
+        );
+    }
+
     // Send SIGUSR1 to trigger restart
     #[cfg(unix)]
     unsafe {
@@ -275,7 +293,8 @@ wait
             let ps_output = String::from_utf8_lossy(&output.stdout);
             assert!(
                 !ps_output.contains(&sleep_pid.to_string()),
-                "Old sleep process (PID: {}) should have been killed on restart but is still running",
+                "Old sleep child process (PID: {}) should have been killed on restart but is still running. \
+                This indicates the process group cleanup is not working correctly on restart.",
                 sleep_pid
             );
         }

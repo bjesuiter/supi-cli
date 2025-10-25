@@ -73,12 +73,14 @@ Created comprehensive tests in `tests/cli_bugfix_tests.rs`:
 2. **`test_process_group_cleanup_on_restart`**: Verifies that the old process
    tree is completely cleaned up during restart before starting the new one
 
-Both tests:
+Both tests use the same sophisticated test script:
 
-- Spawn a bash script that creates child processes
-- Track PIDs of bash and its children
+- Spawn a bash script that creates **two** child processes (simulating
+  real-world scenarios like `npm run build && npm run dev`)
+- Track PIDs of bash and all its children
 - Trigger shutdown/restart
-- Verify all processes are killed (not just the parent)
+- Verify **all** processes are killed (not just the parent bash process)
+- Assert with clear error messages if any process survives
 
 ## Results
 
