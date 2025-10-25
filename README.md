@@ -75,6 +75,14 @@ supi cargo run
 supi --stop-on-child-exit ./my-script.sh
 ```
 
+## Example: Start a Sleep Command for 10 seconds and reload before it finishes
+
+![Example Screenshot](./img/example_sleep_n_reload.png)
+
+## Example: Start multiple commands with "bash -c"
+
+TODO: Add example
+
 ## Command Line Options
 
 ### `--stop-on-child-exit`
