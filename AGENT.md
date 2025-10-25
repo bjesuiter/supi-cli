@@ -3,13 +3,29 @@
 This document helps AI agents navigate the repository structure and understand
 where to find different types of information.
 
+## AI Agent Instructions
+
+When working on this project:
+
+- Implement step by step for review
+- Answer concise, sacrifice grammar for brevity
+- Check
+  [history/2025-10-25_INITIAL_IMPLEMENTATION.md](history/2025-10-25_INITIAL_IMPLEMENTATION.md)
+  for completed phases
+- Look at [agent/BIG_PICTURE_PLAN.md](agent/BIG_PICTURE_PLAN.md) for future
+  phases (6-9)
+- Write integration tests after each phase per
+  [agent/actions/writing_integration_tests.md](agent/actions/writing_integration_tests.md)
+
 ## Quick Navigation
 
 - **User Documentation**: [README.md](README.md) - End-user facing documentation
-- **Architecture & Implementation Plan**:
-  [agent/BIG_PICTURE_PLAN.md](agent/BIG_PICTURE_PLAN.md)
-- **Current Progress**: [agent/PROGRESS.md](agent/PROGRESS.md)
-- **Agent Guidelines**: [agent/actions/](agent/actions/)
+- **Completed Work**:
+  [history/2025-10-25_INITIAL_IMPLEMENTATION.md](history/2025-10-25_INITIAL_IMPLEMENTATION.md) -
+  Phases 1-5 implementation details
+- **Future Work**: [agent/BIG_PICTURE_PLAN.md](agent/BIG_PICTURE_PLAN.md) -
+  Phases 6-9 and architectural reference
+- **Agent Guidelines**: [agent/actions/](agent/actions/) - Process documentation
 - **Change History**: [history/](history/) - Detailed bug fix and feature
   documentation
 
@@ -29,11 +45,19 @@ The application is organized into focused modules:
 
 ### Tests (`tests/`)
 
-- `cli_tests.rs` - Integration tests for all implemented features
-  - Run with: `cargo test` or `bx test`
-  - Currently 13 tests covering Phases 1-3
+Tests organized by phase for better maintainability:
+
+- `cli_test_utils.rs` - Shared PTY setup helper function
+- `cli_phase1_tests.rs` - CLI and basic process tests (9 tests)
+- `cli_phase2_tests.rs` - Signal handling tests (4 tests)
+- `cli_phase3_tests.rs` - Interactive hotkey tests (5 tests)
+- `cli_phase4_tests.rs` - PTY-specific scenarios (4 tests)
+- `cli_phase5_tests.rs` - Silent flag, color output, debounce tests (12 tests)
 - `cli_bugfix_*.rs` - Specific test files for bug fixes with descriptive names
   - Example: `cli_bugfix_process_group_cleanup.rs`
+
+**Run tests:** `cargo test` or `bx test` **Current: 34 tests passing** (All
+phases 1-5 complete)
 
 ### History (`history/`)
 
@@ -52,16 +76,11 @@ See "Recording Bug Fixes and Features" section below for creation guidelines.
 
 #### Core Documents
 
-- `BIG_PICTURE_PLAN.md` - Complete architecture, implementation phases,
-  technical decisions
-  - **Consult this for**: Architecture details, dependencies, module
-    responsibilities, implementation phases
-  - **Do not duplicate**: Information already documented here
-
-- `PROGRESS.md` - Chronological log of what's been implemented
-  - **Use this to**: Understand current state, what's done, what's next
-  - **Update this**: After completing significant work (see logging guidelines
-    below)
+- `BIG_PICTURE_PLAN.md` - Future phases (6-9) and architectural reference
+  - **Consult this for**: Future work, distribution targets, technical
+    challenges, optional enhancements
+  - **Note**: Completed phases (1-5) are documented in
+    history/2025-10-25_INITIAL_IMPLEMENTATION.md
 
 - `bonnie.toml-reference.md` - Task runner configuration reference
 
@@ -96,48 +115,135 @@ Build outputs are in `target/`:
 
 ## Implementation Status
 
-**Current Phase**: Phase 4 (Advanced Features) - In Progress
+**Current Phase**: Phase 5 (Advanced Features) - COMPLETE
 
 **Completed**:
 
 - ✅ Phase 1: Basic Process Spawning
 - ✅ Phase 2: Signal Handling
 - ✅ Phase 3: Interactive Hotkey
+- ✅ Phase 4: PTY-Based Testing
+- ✅ Phase 5: Advanced Features (colored logging, --silent flag, restart
+  debouncing)
 
-**Next Steps**: See [agent/BIG_PICTURE_PLAN.md](agent/BIG_PICTURE_PLAN.md) Phase
-4 checklist
+**Next Steps**: See [agent/BIG_PICTURE_PLAN.md](agent/BIG_PICTURE_PLAN.md) for
+Phase 6-9 (future work)
 
-## Key Technical Details
+See
+[history/2025-10-25_INITIAL_IMPLEMENTATION.md](history/2025-10-25_INITIAL_IMPLEMENTATION.md)
+for detailed implementation notes on completed phases.
 
-For comprehensive technical information, see
-[agent/BIG_PICTURE_PLAN.md](agent/BIG_PICTURE_PLAN.md), including:
+## Architecture Overview
 
-- Architecture components and responsibilities
-- Dependencies and their usage
-- Implementation patterns (tokio::select!, async streams, etc.)
-- Testing strategy
-- Distribution targets
-- Error handling approach
+### Core Components
+
+**1. CLI Argument Parsing (`src/cli.rs`)**
+
+- Library: `clap` v4 with derive macros
+- Parses command and args, handles flags
+- Key flags: `--stop-on-child-exit`, `--restart-signal`, `--restart-hotkey`,
+  `--restart-debounce-ms`, `--silent`, `--log-color`, `--info-color`
+
+**2. Process Management (`src/process.rs`)**
+
+- Library: `tokio` with process feature
+- Spawns child process, captures/forwards stdout/stderr
+- Tracks process state, handles graceful termination
+- Restart capability with configurable debouncing
+
+**3. Signal Handling (`src/signals.rs`)**
+
+- Library: `tokio::signal` for Unix signals
+- Handles: SIGTERM, SIGINT, SIGQUIT (graceful shutdown)
+- Configurable restart signal (default: SIGUSR1)
+- Forwards signals to child, timeout-based force kill
+
+**4. Terminal Input (`src/hotkey.rs`)**
+
+- Library: `crossterm` for terminal manipulation
+- Raw mode for single keystroke capture
+- Non-blocking input with RAII cleanup
+- Configurable restart hotkey (default: 'r')
+
+**5. Output Management (`src/output.rs`)**
+
+- Stateful `Output` struct for colored, suppressible logging
+- Separate colors for logs vs info messages
+- Silent mode (suppress supervisor logs, keep child output)
+- Thread-safe with internal mutex
+
+**6. Supervisor (`src/supervisor.rs`)**
+
+- Main event loop using `tokio::select!`
+- Coordinates signals, hotkeys, process I/O
+- Restart debouncing logic
+- Graceful shutdown coordination
+
+### Module Structure
+
+```
+src/
+├── main.rs           - Entry point, CLI setup, main loop
+├── cli.rs            - Clap CLI argument definitions
+├── process.rs        - Process spawning and management
+├── signals.rs        - Signal handling setup
+├── hotkey.rs         - Terminal input and hotkey detection
+├── output.rs         - Colored, stateful output management
+└── supervisor.rs     - Main supervisor coordination logic
+```
+
+### Error Handling Strategy
+
+- Use `anyhow` for application-level errors with context
+- Use `Result<T>` throughout for proper error propagation
+- Provide helpful error messages for:
+  - Command not found
+  - Permission denied
+  - Invalid signal names
+  - Terminal access issues
+
+### Testing Strategy
+
+**Unit Tests:**
+
+- CLI argument parsing edge cases
+- Signal name validation
+- Hotkey character validation
+
+**Integration Tests (via PTY):**
+
+- All 34 tests use `portable-pty` for realistic terminal behavior
+- Tests organized by phase in separate files
+- Clean test output without raw mode artifacts
+- Coverage: process spawning, signals, hotkeys, output forwarding, debouncing
+
+**Manual Testing:**
+
+- Long-running processes
+- Processes that exit immediately
+- Continuous output
+- Stubborn processes ignoring SIGTERM
+- Rapid restart requests (debouncing)
 
 ## Making Changes
 
 ### Before Implementing
 
-1. Check [agent/PROGRESS.md](agent/PROGRESS.md) for current status
-2. Review relevant section in
+1. Check implementation history:
+   [history/2025-10-25_INITIAL_IMPLEMENTATION.md](history/2025-10-25_INITIAL_IMPLEMENTATION.md)
+2. For future work, review
    [agent/BIG_PICTURE_PLAN.md](agent/BIG_PICTURE_PLAN.md)
-3. Look at existing tests in `tests/cli_tests.rs` for patterns
+3. Look at existing tests in `tests/cli_phase*_tests.rs` for patterns
 
 ### After Implementing
 
 1. Write integration tests (see
    [agent/actions/writing_integration_tests.md](agent/actions/writing_integration_tests.md))
-2. Update [agent/PROGRESS.md](agent/PROGRESS.md) (see
-   [agent/actions/log_progress.md](agent/actions/log_progress.md))
-3. Run `bx test` to ensure all tests pass
-4. Run `bx lint` and `bx fmt` for code quality
-5. For significant bug fixes or features, create history documentation (see
+2. Run `bx test` to ensure all tests pass
+3. Run `bx lint` and `bx fmt` for code quality
+4. For significant bug fixes or features, create history documentation (see
    below)
+5. Update test counts in this file if new tests were added
 
 ## Recording Bug Fixes and Features
 
@@ -255,11 +361,21 @@ of bug fix documentation.
 
 See `Cargo.toml` for full dependency list. Key libraries:
 
-- `clap` - CLI argument parsing
-- `tokio` - Async runtime and process management
-- `crossterm` - Terminal manipulation for hotkey
-- `signal-hook-tokio` - Unix signal handling
-- `anyhow` - Error handling
+**Production Dependencies:**
+
+- `clap` v4 (with derive) - CLI argument parsing
+- `tokio` v1.40 (full features) - Async runtime and process management
+- `tokio-util` v0.7 (io features) - Additional tokio utilities
+- `crossterm` v0.28 - Terminal manipulation for hotkey and colored output
+- `signal-hook` v0.3 - Signal handling foundation
+- `signal-hook-tokio` v0.3 (futures-v0_3) - Async Unix signal handling
+- `anyhow` v1.0 - Application-level error handling with context
+
+**Dev Dependencies:**
+
+- `assert_cmd` - Integration test command execution
+- `predicates` - Assertions for test output
+- `portable-pty` v0.8 - PTY emulation for realistic terminal testing
 
 ## Platform Support
 

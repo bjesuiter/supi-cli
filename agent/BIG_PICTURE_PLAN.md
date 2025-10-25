@@ -1,204 +1,27 @@
-# Supi CLI - Implementation Plan
+# Supi CLI - Future Implementation Plan
 
 ## Overview
 
 Building a lightweight process supervisor in Rust that manages child processes
 with restart capabilities via signals and hotkeys.
 
-## AI Agent Instructions
+**Current Status:** Phases 1-5 complete (see
+[history/2025-10-25_INITIAL_IMPLEMENTATION.md](../history/2025-10-25_INITIAL_IMPLEMENTATION.md))\
+**This Document:** Future phases (6-9) and architectural reference
 
-Let's implement the app! Let's do it step by step so that i can review it.
-Answer concise, sacrifice grammar for brevity. I'll ask if i need more
-explanation. Use @PROGRESS.md to figure out how much is done already and what to
-do next. Use @actions/log_progress.md to log progress. Write integration tests
-after each phase as defined in @actions/writing_integration_tests.md.
+## Completed Phases
 
-## Architecture Components
+✅ **Phase 1:** Basic Process Spawning\
+✅ **Phase 2:** Signal Handling\
+✅ **Phase 3:** Interactive Hotkey\
+✅ **Phase 4:** PTY-Based Testing\
+✅ **Phase 5:** Advanced Features (colored logging, --silent, debouncing)
 
-### 1. CLI Argument Parsing
+See
+[history/2025-10-25_INITIAL_IMPLEMENTATION.md](../history/2025-10-25_INITIAL_IMPLEMENTATION.md)
+for detailed implementation notes.
 
-- **Library**: `clap` v4 with derive macros
-- **Features**: Parse command and args, handle flags
-- **Arguments to implement**:
-  - `--stop-on-child-exit`: Boolean flag
-  - `--restart-signal <SIGNAL>`: Signal name (default: SIGUSR1)
-  - `--restart-hotkey <KEY>`: Single character (default: 'r')
-  - `--restart-debounce-ms <MILLISECONDS>`: Debounce time in ms (default: 1000)
-  - Positional args: Command and its arguments
-
-### 2. Process Management
-
-- **Library**: `tokio` with process feature
-- **Responsibilities**:
-  - Spawn child process with command + args
-  - Capture and forward stdout/stderr
-  - Track process state (running, stopped, exit code)
-  - Gracefully terminate child on shutdown
-  - Restart child process on demand
-
-### 3. Signal Handling
-
-- **Library**: `tokio::signal` for Unix signals
-- **Signals to handle**:
-  - User-configurable restart signal (default: SIGUSR1)
-  - SIGTERM - graceful shutdown
-  - SIGINT - graceful shutdown (Ctrl+C)
-  - SIGQUIT - graceful shutdown
-- **Behavior**:
-  - Forward termination signals to child
-  - Wait for child to exit gracefully
-  - Force kill if child doesn't exit within timeout
-
-### 4. Terminal Input (Hotkey Detection)
-
-- **Library**: `crossterm` for cross-platform terminal manipulation
-- **Features**:
-  - Enable raw mode to capture single keystrokes
-  - Non-blocking input reading
-  - Detect restart hotkey
-  - Clean terminal state on exit
-
-### 5. Output Forwarding
-
-- **Approach**: Async streams with tokio
-- **Requirements**:
-  - Forward stdout line-by-line in real-time
-  - Forward stderr line-by-line in real-time
-  - No buffering delays
-  - Preserve output order as much as possible
-  - Use `BufReader` with tokio's `AsyncBufReadExt`
-
-### 6. Main Event Loop
-
-- **Structure**: Tokio async runtime with select! macro
-- **Events to handle**:
-  - Child process stdout data
-  - Child process stderr data
-  - Child process exit
-  - Unix signals (restart, terminate)
-  - Terminal input (hotkey press)
-  - Graceful shutdown coordination
-
-## Technical Implementation Details
-
-### Dependencies (Cargo.toml)
-
-```toml
-[dependencies]
-clap = { version = "4.5", features = ["derive"] }
-tokio = { version = "1.40", features = ["full"] }
-tokio-util = { version = "0.7", features = ["io"] }
-crossterm = "0.28"
-anyhow = "1.0"
-signal-hook = "0.3"
-signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
-```
-
-### Module Structure
-
-```
-src/
-├── main.rs           - Entry point, CLI setup, main loop
-├── cli.rs            - Clap CLI argument definitions
-├── process.rs        - Process spawning and management
-├── signals.rs        - Signal handling setup
-├── hotkey.rs         - Terminal input and hotkey detection
-└── supervisor.rs     - Main supervisor coordination logic
-```
-
-## Implementation Phases
-
-### Phase 1: Basic Process Spawning
-
-- [x] Set up Clap CLI argument parsing
-- [x] Parse command and arguments
-- [x] Spawn child process using tokio::process::Command
-- [x] Forward stdout/stderr to parent's stdout/stderr
-- [x] Wait for process to exit
-- [x] Basic error handling
-
-### Phase 2: Signal Handling
-
-- [x] Set up signal handlers for SIGINT, SIGTERM, SIGQUIT
-- [x] Implement graceful shutdown (send SIGTERM to child, wait, force kill if
-      needed)
-- [x] Add configurable restart signal (default SIGUSR1)
-- [x] Implement restart logic (terminate child, respawn)
-- [x] Test signal handling
-
-### Phase 3: Interactive Hotkey
-
-- [x] Set up crossterm raw mode
-- [x] Create async task for reading terminal input
-- [x] Detect restart hotkey press
-- [x] Trigger restart on hotkey
-- [x] Handle terminal cleanup on exit
-- [x] Make hotkey configurable
-
-### Phase 4: PTY-Based Testing
-
-- [x] Add portable-pty dependency for realistic terminal testing
-- [x] Create helper function for PTY test setup
-- [x] Convert all tests with real commands to use PTY
-- [x] Test long-running processes with hotkey restart
-- [x] Test processes that exit immediately
-- [x] Test continuous output forwarding
-- [x] Test stubborn processes that ignore SIGTERM
-- [x] Clean test output without raw mode artifacts
-
-### Phase 5: Advanced Features
-
-- [x] Implement --stop-on-child-exit flag
-- [x] Handle child process exit scenarios
-- [x] Add colored logging for supervisor messages
-  - Added `--log-color` CLI flag (default: yellow) for regular logs
-  - Added `--info-color` CLI flag (default: green) for informational messages
-  - Supported colors: yellow, red, green, blue, cyan, magenta, white, none
-  - Uses crossterm's color support (already in dependencies)
-  - Colorizes `[supi]` prefix in all supervisor logs
-  - Separate color for informational messages (hotkey prompts, Ctrl+C hints)
-  - Added "Child process running (PID: xxx)" log for clarity
-  - Updated output.rs with colored output functions and macros
-  - Passed color config through ProcessManager and Supervisor
-- [x] Add --silent flag and refactor Output to stateful struct
-  - Added `--silent` CLI flag to suppress all supervisor output
-  - Child process output always visible (never suppressed)
-  - Refactored output.rs from function-based to stateful `Output` struct
-  - Output struct encapsulates: log_color, info_color, silent flag
-  - Methods: `log()`, `info()`, `elog()`, `forward_stdout()`, `forward_stderr()`
-  - Replaced macro-based output with struct methods throughout codebase
-  - Maintains thread-safety with internal mutex
-  - Clear separation between supervisor logs vs child output
-  - Added silentExample script to bonnie.toml
-  - Added 3 tests for --silent flag functionality
-  - All 25 tests passing
-- [x] Add restart debouncing (prevent rapid restarts)
-  - Added `--restart-debounce-ms <MILLISECONDS>` CLI option (default: 1000)
-  - If 0, no debounce (immediate restart allowed)
-  - **Implementation completed**:
-    - Track timestamp of last restart request (Option<Instant>)
-    - On restart trigger (signal or hotkey):
-      - Check if last restart was within debounce window
-      - If yes: Log "Restart request ignored (debounce active, Xms remaining)"
-        and skip
-      - If no: Proceed with restart and update timestamp
-    - Store debounce_ms and last_restart in Supervisor struct
-    - Use tokio::time::Instant for async-compatible timing
-    - Created should_allow_restart() method to encapsulate logic
-    - Applied to both signal and hotkey restart handlers
-  - **Testing completed**:
-    - ✅ test_debounce_disabled_allows_rapid_restarts (0ms): rapid restarts work
-    - ✅ test_debounce_prevents_rapid_restarts (500ms): rapid requests ignored
-    - ✅ test_debounce_allows_restart_after_window_expires (200ms): restart
-      after window succeeds
-    - ✅ test_debounce_affects_hotkey_restarts: hotkey respects debounce
-    - All 34 tests passing
-  - **User experience**:
-    - Log informative message when debounce prevents restart
-    - Shows remaining debounce time in message
-    - No blocking/delays - just ignore requests within window
-- [ ] Improve error messages and logging
-- [ ] Add process restart counter/statistics
+## Future Implementation Phases
 
 ### Phase 6: Crates.io Deployment
 
@@ -280,47 +103,53 @@ src/
 
 ## Key Technical Challenges
 
-### Challenge 1: Concurrent Event Handling
+### Challenge 1: Concurrent Event Handling ✅ SOLVED
 
 **Problem**: Multiple async events (signals, input, process I/O) need
-coordination **Solution**: Use `tokio::select!` to multiplex events in main loop
+coordination\
+**Solution**: Use `tokio::select!` to multiplex events in main loop
 
-### Challenge 2: Clean Process Termination
+### Challenge 2: Clean Process Termination ✅ SOLVED
 
-**Problem**: Ensure child process is always cleaned up properly **Solution**:
+**Problem**: Ensure child process is always cleaned up properly\
+**Solution**:
 
 - Use RAII pattern with Drop trait
 - Implement timeout-based forced termination
 - Handle zombie processes
 
-### Challenge 3: Raw Terminal Mode Cleanup
+### Challenge 3: Raw Terminal Mode Cleanup ✅ SOLVED
 
-**Problem**: If app crashes, terminal may remain in raw mode **Solution**:
+**Problem**: If app crashes, terminal may remain in raw mode\
+**Solution**:
 
 - Use crossterm's automatic cleanup
 - Implement custom panic handler to restore terminal
 - Test with various exit scenarios
 
-### Challenge 4: Output Forwarding Without Delay
+### Challenge 4: Output Forwarding Without Delay ✅ SOLVED
 
-**Problem**: Buffering can delay output visibility **Solution**:
+**Problem**: Buffering can delay output visibility\
+**Solution**:
 
 - Use line-based async reading with BufReader
 - Don't add additional buffering
 - Use `tokio::io::copy` or manual forwarding loop
 
-### Challenge 5: Cross-Platform Signal Handling
+### Challenge 5: Cross-Platform Signal Handling ✅ DOCUMENTED
 
-**Problem**: Signals work differently on Unix vs Windows **Solution**:
+**Problem**: Signals work differently on Unix vs Windows\
+**Solution**:
 
 - Use conditional compilation for Unix-specific signals
 - Document Unix-only requirement
 - Consider future Windows support with named events
 
-### Challenge 6: Vim-Style Mode Switching (Phase 7)
+### Challenge 6: Vim-Style Mode Switching (Phase 8)
 
 **Problem**: Toggle between raw mode (hotkeys) and cooked mode (stdin
-forwarding) **Solution**:
+forwarding)\
+**Solution**:
 
 - Maintain mode state (Normal/Insert)
 - Disable terminal raw mode when entering insert mode
@@ -330,10 +159,11 @@ forwarding) **Solution**:
 - Handle ESC key detection in insert mode to return to normal
 - Ensure smooth transitions without disrupting child output
 
-### Challenge 7: Restart Debouncing (Phase 5)
+### Challenge 7: Restart Debouncing ✅ SOLVED
 
 **Problem**: Prevent accidental rapid restarts from user mashing hotkey or
-sending multiple signals **Solution**:
+sending multiple signals\
+**Solution**:
 
 - Track last restart timestamp using `tokio::time::Instant`
 - Check elapsed time before allowing restart
@@ -345,7 +175,7 @@ sending multiple signals **Solution**:
 
 ### Challenge 8: TUI Mode Integration (Phase 9)
 
-**Problem**: Manage TUI rendering while forwarding child output in real-time
+**Problem**: Manage TUI rendering while forwarding child output in real-time\
 **Solution**:
 
 - Buffer child output in scrollable widget
@@ -355,62 +185,6 @@ sending multiple signals **Solution**:
 - Maintain responsive UI with high-frequency child output
 - Balance UI refresh rate with CPU usage
 - Clean TUI teardown on exit or panic
-
-## Testing Strategy
-
-### Unit Tests
-
-- CLI argument parsing edge cases
-- Signal name validation
-- Hotkey character validation
-
-### Integration Tests
-
-- Spawn and terminate simple processes
-- Test restart functionality
-- Signal handling with mock processes
-- Output forwarding correctness
-
-### PTY-Based Testing ✅ (Implemented in Phase 4)
-
-**Implementation completed:** All tests with real commands now use PTY.
-
-**What was implemented:**
-
-- Added `portable-pty = "0.8"` dependency
-- Created `create_pty_with_reader()` helper function
-- Converted 17 tests to use PTY (all tests that spawn real child processes)
-- Background reader thread pattern for non-blocking output capture
-- Clean test output without raw mode artifacts
-
-**Benefits achieved:**
-
-- ✅ Tests real terminal behavior (what users experience)
-- ✅ Clean test output (no raw mode artifacts in cargo test)
-- ✅ Proper raw mode testing
-- ✅ Consistent testing approach across all process tests
-
-**Test coverage:**
-
-- Phase 1 tests: 4 tests converted
-- Phase 2 tests: 4 tests converted
-- Phase 3 tests: 5 tests converted
-- Original PTY tests: 4 tests (now using helper function)
-- Total: 22 tests, all passing with clean output
-
-### Manual Testing Scenarios
-
-1. Long-running process (sleep infinity)
-2. Process that exits immediately
-3. Process that prints continuously
-4. Process that ignores SIGTERM
-5. Rapid restart requests (with and without debouncing)
-6. Signal handling while process is restarting
-7. Restart debouncing behavior:
-   - Mash restart hotkey rapidly (should see debounce messages)
-   - Send multiple restart signals quickly (should ignore extras)
-   - Test with --restart-debounce-ms 0 (all restarts allowed)
-   - Test with --restart-debounce-ms 3000 (3 second window)
 
 ## Distribution Targets
 
@@ -440,16 +214,6 @@ cargo build --release --target x86_64-unknown-linux-musl
 - Create release artifacts with version tags
 - Run tests on each platform
 
-## Error Handling Strategy
-
-- Use `anyhow` for application-level errors with context
-- Use `Result<T>` throughout for proper error propagation
-- Provide helpful error messages for common issues:
-  - Command not found
-  - Permission denied
-  - Invalid signal names
-  - Terminal access issues
-
 ## Future Enhancements (Out of Scope)
 
 - Configuration file support
@@ -459,26 +223,51 @@ cargo build --release --target x86_64-unknown-linux-musl
 - Web UI for status monitoring
 - Automatic restart on file changes (file watching)
 - Windows support
+- Process restart counter/statistics
 
 ## Implementation Timeline
 
-- **Phase 1**: 2-3 hours ✅
-- **Phase 2**: 2-3 hours ✅
-- **Phase 3**: 2-3 hours ✅
-- **Phase 4**: 2-3 hours ✅
-- **Phase 5**: 1-2 hours
-- **Phase 6**: 1-2 hours (crates.io deployment)
-- **Phase 7**: 2-3 hours (polish & distribution)
-- **Phase 8**: 3-4 hours (future enhancement)
-- **Phase 9**: 3-5 hours (future enhancement)
-- **Total**: ~13-19 hours for core implementation (Phases 1-7)
-- **With enhancements**: ~19-28 hours (includes Phases 8 and/or 9)
+**Completed:**
+
+- ✅ Phase 1: 2-3 hours
+- ✅ Phase 2: 2-3 hours
+- ✅ Phase 3: 2-3 hours
+- ✅ Phase 4: 2-3 hours
+- ✅ Phase 5: 1-2 hours
+
+**Remaining:**
+
+- Phase 6: 1-2 hours (crates.io deployment)
+- Phase 7: 2-3 hours (polish & distribution)
+- Phase 8: 3-4 hours (vim-style interactive mode - optional)
+- Phase 9: 3-5 hours (TUI mode - optional)
+
+**Total Completed**: ~11-14 hours\
+**Remaining Core**: ~3-5 hours (Phases 6-7)\
+**With Optional Enhancements**: ~9-14 hours (includes Phases 8-9)
 
 ## Success Criteria
 
-✅ Can spawn and supervise arbitrary processes ✅ Forwards stdout/stderr in
-real-time ✅ Responds to Unix signals (restart and terminate) ✅ Interactive
-hotkey works reliably ✅ Graceful shutdown with child cleanup ✅ Configurable
-via CLI flags ✅ Works on Linux and macOS ✅ Clean, maintainable code with good
-error handling ✅ Comprehensive README with examples ✅ Release binaries for all
-target platforms
+**Core Features (Achieved):**
+
+- ✅ Can spawn and supervise arbitrary processes
+- ✅ Forwards stdout/stderr in real-time
+- ✅ Responds to Unix signals (restart and terminate)
+- ✅ Interactive hotkey works reliably
+- ✅ Graceful shutdown with child cleanup
+- ✅ Configurable via CLI flags
+- ✅ Works on Linux and macOS
+- ✅ Clean, maintainable code with good error handling
+- ✅ Comprehensive test suite (34 tests)
+
+**Distribution (Phase 6-7):**
+
+- [ ] Published on crates.io
+- [ ] Easy installation with `cargo install`
+- [ ] Comprehensive README with examples
+- [ ] Release binaries for all target platforms
+
+**Optional Enhancements (Phase 8-9):**
+
+- [ ] Vim-style interactive mode with stdin forwarding
+- [ ] Optional TUI mode for enhanced monitoring
