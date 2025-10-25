@@ -287,10 +287,29 @@ dual licensed as above, without any additional terms or conditions.
 - **Cargo.lock**: Users will install with `--locked` for reproducible builds
 - **Test thoroughly**: Always run full test suite before publishing
 
-## Development Information
+---
+
+# Development Information
 
 This repository uses [bonnie/bx cli](https://github.com/codemonument/bx) as a
 task runner. `bx` is a custom fork of bonnie with a shorter CLI name for
 convenience.
 
 See [bonnie.toml](bonnie.toml) for all available commands.
+
+## Future Considerations and Improvements
+
+### Polish & Distribution
+
+The following enhancements are being considered for future releases:
+
+- **Comprehensive error handling**: Improve error messages and edge case
+  handling
+- **Enhanced status messages**: Add more informative status messages throughout
+  the lifecycle
+- **Cross-platform testing**: Thorough testing on various Linux distributions
+  and macOS versions
+- **CI/CD pipeline**: Set up automated cross-compilation for multiple platforms
+- **Pre-built binaries**: Provide release binaries for common target platforms
+- **Documentation improvements**: Expand examples and use case documentation
+- **Examples directory**: Add practical examples for common workflows
