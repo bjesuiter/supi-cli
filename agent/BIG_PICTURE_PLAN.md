@@ -1,4 +1,4 @@
-# Supi CLI - Future Implementation Plan
+# Supi CLI - Technical Implementation Reference
 
 ## Overview
 
@@ -7,7 +7,10 @@ with restart capabilities via signals and hotkeys.
 
 **Current Status:** Phases 1-5 complete (see
 [history/2025-10-25_INITIAL_IMPLEMENTATION.md](../history/2025-10-25_INITIAL_IMPLEMENTATION.md))\
-**This Document:** Future phases (6-9) and architectural reference
+**This Document:** Technical reference for architecture and challenges
+
+**For user-facing roadmap:** See "Future Considerations and Improvements" in
+[README.md](../README.md)
 
 ## Completed Phases
 
@@ -21,85 +24,17 @@ See
 [history/2025-10-25_INITIAL_IMPLEMENTATION.md](../history/2025-10-25_INITIAL_IMPLEMENTATION.md)
 for detailed implementation notes.
 
-## Future Implementation Phases
+## Future Work Overview
 
-### Phase 6: Crates.io Deployment
+See [README.md](../README.md) "Future Considerations and Improvements" section
+for user-facing roadmap.
 
-- [ ] Verify Cargo.toml metadata for crates.io
-  - Package name, version, description
-  - Authors, license, repository, homepage
-  - Keywords and categories
-  - Documentation link
-  - README path
-- [ ] Review and update README.md
-  - Add `cargo install --locked supi-cli` instructions
-  - Clear installation section with crates.io as primary method
-- [ ] Verify all dependencies are compatible with crates.io
-- [ ] Test build in clean environment
-  - `cargo build --release`
-  - `cargo test`
-- [ ] Prepare for publication
-  - `cargo package --list` (check included files)
-  - `cargo package` (test packaging)
-  - `cargo publish --dry-run` (test publication)
-- [ ] Publish to crates.io
-  - `cargo login` (one-time setup)
-  - `cargo publish`
-- [ ] Verify installation works
-  - Test on clean system: `cargo install --locked supi-cli`
-  - Test that installed binary works correctly
+**Technical phases:**
 
-### Phase 7: Polish & Distribution
-
-- [ ] Comprehensive error handling
-- [ ] Add informative status messages
-- [ ] Test on Linux and macOS
-- [ ] Set up CI/CD for cross-compilation
-- [ ] Build release binaries for target platforms
-- [ ] Documentation improvements
-- [ ] Add examples directory
-
-### Phase 8: Vim-Style Interactive Mode (Future)
-
-- [ ] Add terminal mode state machine (Normal/Insert modes)
-- [ ] Normal mode: Raw mode for hotkeys (current behavior)
-  - Hotkeys active (restart, quit, etc.)
-  - No stdin forwarding to child
-- [ ] Insert mode: Pass-through mode for stdin
-  - Press 'i' to enter insert mode
-  - Forward stdin to child process
-  - Press ESC to return to normal mode
-  - Visual indicator showing current mode
-- [ ] Add --interactive flag to start in insert mode
-- [ ] Display mode indicator (e.g., "-- INSERT --" or "-- NORMAL --")
-- [ ] Smooth mode transitions without disrupting child process
-
-### Phase 9: Optional TUI Mode (Future Enhancement)
-
-- [ ] Add `--tui` flag to enable TUI mode (default: disabled)
-- [ ] **Library**: `ratatui` (formerly tui-rs) for terminal UI
-- [ ] **Features when enabled**:
-  - Status bar showing process state, uptime, restart count
-  - Scrollable output buffer for child stdout/stderr
-  - Help panel showing available hotkeys
-  - Visual indicators for process state (running/stopped/restarting)
-  - Cleaner test output (no raw mode artifacts)
-- [ ] **Design considerations**:
-  - Keep default mode simple (current passthrough behavior)
-  - TUI mode as opt-in for users who want enhanced UI
-  - Preserve all core functionality in both modes
-  - Add `--tui-refresh-rate` for customizable UI updates
-- [ ] **Layout structure**:
-  - Top: Status bar (process name, state, PID, uptime, restarts)
-  - Middle: Scrollable output panel (child stdout/stderr)
-  - Bottom: Help bar (hotkeys and commands)
-- [ ] **Testing strategy**:
-  - Conditional test compilation for TUI mode
-  - Test both TUI and non-TUI modes
-  - Mock terminal for TUI rendering tests
-- [ ] **Dependencies addition**:
-  - `ratatui = "0.26"` (or latest)
-  - `crossterm` (already in use)
+- **Phase 6:** Crates.io deployment and packaging
+- **Phase 7:** Polish, distribution, CI/CD
+- **Phase 8:** Vim-style interactive mode (stdin forwarding)
+- **Phase 9:** Optional TUI mode with ratatui
 
 ## Key Technical Challenges
 
@@ -207,23 +142,12 @@ cargo build --release --target x86_64-unknown-linux-gnu
 cargo build --release --target x86_64-unknown-linux-musl
 ```
 
-### GitHub Actions CI/CD
+### GitHub Actions CI/CD (Phase 7)
 
 - Set up cross-compilation matrix
 - Build on appropriate runners (macos-latest, ubuntu-latest)
 - Create release artifacts with version tags
 - Run tests on each platform
-
-## Future Enhancements (Out of Scope)
-
-- Configuration file support
-- Multiple process supervision
-- Process groups and dependencies
-- Log file rotation
-- Web UI for status monitoring
-- Automatic restart on file changes (file watching)
-- Windows support
-- Process restart counter/statistics
 
 ## Implementation Timeline
 
@@ -262,10 +186,11 @@ cargo build --release --target x86_64-unknown-linux-musl
 
 **Distribution (Phase 6-7):**
 
-- [ ] Published on crates.io
-- [ ] Easy installation with `cargo install`
-- [ ] Comprehensive README with examples
+- ✅ Published on crates.io
+- [x] Easy installation with `cargo install` (docs updated)
+- [x] Comprehensive README with examples
 - [ ] Release binaries for all target platforms
+- [ ] CI/CD pipeline
 
 **Optional Enhancements (Phase 8-9):**
 

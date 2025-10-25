@@ -11,20 +11,23 @@ When working on this project:
 - Answer concise, sacrifice grammar for brevity
 - Check
   [history/2025-10-25_INITIAL_IMPLEMENTATION.md](history/2025-10-25_INITIAL_IMPLEMENTATION.md)
-  for completed phases
-- Look at [agent/BIG_PICTURE_PLAN.md](agent/BIG_PICTURE_PLAN.md) for future
-  phases (6-9)
+  for completed phases (1-5)
+- Look at [README.md](README.md) "Future Considerations" for user-facing roadmap
+- See [agent/BIG_PICTURE_PLAN.md](agent/BIG_PICTURE_PLAN.md) for technical
+  challenges and architecture
 - Write integration tests after each phase per
   [agent/actions/writing_integration_tests.md](agent/actions/writing_integration_tests.md)
 
 ## Quick Navigation
 
 - **User Documentation**: [README.md](README.md) - End-user facing documentation
+  and future roadmap
 - **Completed Work**:
   [history/2025-10-25_INITIAL_IMPLEMENTATION.md](history/2025-10-25_INITIAL_IMPLEMENTATION.md) -
   Phases 1-5 implementation details
-- **Future Work**: [agent/BIG_PICTURE_PLAN.md](agent/BIG_PICTURE_PLAN.md) -
-  Phases 6-9 and architectural reference
+- **Technical Reference**:
+  [agent/BIG_PICTURE_PLAN.md](agent/BIG_PICTURE_PLAN.md) - Architecture,
+  challenges, and technical planning
 - **Agent Guidelines**: [agent/actions/](agent/actions/) - Process documentation
 - **Change History**: [history/](history/) - Detailed bug fix and feature
   documentation
@@ -76,10 +79,10 @@ See "Recording Bug Fixes and Features" section below for creation guidelines.
 
 #### Core Documents
 
-- `BIG_PICTURE_PLAN.md` - Future phases (6-9) and architectural reference
-  - **Consult this for**: Future work, distribution targets, technical
-    challenges, optional enhancements
-  - **Note**: Completed phases (1-5) are documented in
+- `BIG_PICTURE_PLAN.md` - Technical reference and architectural documentation
+  - **Consult this for**: Technical challenges, architecture decisions,
+    distribution targets
+  - **Note**: User-facing roadmap is in README.md; completed phases (1-5) in
     history/2025-10-25_INITIAL_IMPLEMENTATION.md
 
 - `bonnie.toml-reference.md` - Task runner configuration reference

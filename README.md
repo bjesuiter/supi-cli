@@ -299,9 +299,10 @@ See [bonnie.toml](bonnie.toml) for all available commands.
 
 ## Future Considerations and Improvements
 
-### Polish & Distribution
+The following features and enhancements are being considered for future
+releases:
 
-The following enhancements are being considered for future releases:
+### Phase 7: Polish & Distribution
 
 - **Comprehensive error handling**: Improve error messages and edge case
   handling
@@ -313,3 +314,40 @@ The following enhancements are being considered for future releases:
 - **Pre-built binaries**: Provide release binaries for common target platforms
 - **Documentation improvements**: Expand examples and use case documentation
 - **Examples directory**: Add practical examples for common workflows
+
+### Phase 8: Vim-Style Interactive Mode (Future)
+
+Add an optional interactive mode that allows switching between normal mode
+(hotkeys active) and insert mode (stdin forwarded to child):
+
+- **Normal Mode**: Current behavior - hotkeys active, no stdin forwarding
+- **Insert Mode**: Forward stdin to child process, press ESC to return to normal
+- **Mode Indicator**: Visual display of current mode (like vim)
+- **Smooth Transitions**: Mode switching without disrupting child process
+
+Use cases:
+
+- Interactive shells or REPLs that need input
+- Applications requiring both monitoring and interaction
+- Development workflows mixing observation and interaction
+
+### Phase 9: Optional TUI Mode (Future Enhancement)
+
+An optional terminal UI mode (`--tui` flag) for enhanced monitoring:
+
+- **Status Bar**: Process state, uptime, restart count
+- **Scrollable Output**: Buffer for reviewing child stdout/stderr
+- **Help Panel**: Available hotkeys and commands
+- **Visual Indicators**: Process state visualization
+  (running/stopped/restarting)
+- **Customizable Refresh**: Configurable UI update rate
+
+This would be opt-in, preserving the simple passthrough behavior by default.
+
+### Other Potential Features (Out of Scope)
+
+Features that might be explored much later:
+
+- **Configuration file support**: TOML/KDL config files
+- **Windows support**: Cross-platform signal equivalents
+- **Process statistics**: Restart counter, uptime tracking, resource usage
